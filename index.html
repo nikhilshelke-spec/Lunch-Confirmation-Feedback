@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      console.error("DOM JSERROR:", msg, "line:", line);
+      window.__lastJsError = { msg: msg, line: line, col: col };
+    };
+  </script>
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -882,7 +888,7 @@
           <!-- Tomorrow Menu Sneak Peek -->
           <div class="menu-preview-box" id="tomorrow-menu-box">
             <h4>Tomorrow's Planned Menu</h4>
-            <p id="tomorrow-menu-desc">Loading tomorrow's menu...</p>
+            <p id="tomorrow-menu-desc">Dal Tadka &bull; Batata Sukhi Bhaji &bull; Paneer Masala &bull; Chapati & Steam Rice</p>
           </div>
 
           <!-- Cutoff Closed Alert (Dynamic) -->
@@ -929,6 +935,11 @@
                   <span style="font-size:0.8rem; font-weight:700; display:block;">Specific Dates</span>
                   <span style="font-size:0.68rem; color:var(--text-muted); display:block;">Pick 1 or Multiple Days</span>
                 </div>
+                <div class="meal-radio-card" id="period-unplanned" onclick="selectBookingPeriod('unplanned')" style="padding:10px 6px; border:1.5px dashed #0284c7; background:#f0f9ff;">
+                  <span style="font-size:1.1rem; display:block;">⚡</span>
+                  <span style="font-size:0.8rem; font-weight:700; display:block; color:#0369a1;">Same-Day Ad-Hoc</span>
+                  <span style="font-size:0.68rem; color:#0284c7; display:block;">Spot Meal Request</span>
+                </div>
               </div>
 
               <!-- Manual / Specific Dates Multi-Day Picker Box -->
@@ -941,7 +952,7 @@
                 </div>
                 
                 <p style="font-size:0.75rem; color:#64748b; margin-top:0; margin-bottom:10px;">
-                  Tap dates below to select/deselect (उदा. आठवड्यातील २ किंवा ३ ठरावीक दिवस).
+                  Tap dates below to select/deselect (e.g., select 2 or 3 specific days in a week).
                 </p>
 
                 <!-- Interactive Chips for Upcoming Days -->
@@ -979,7 +990,7 @@
 
               <!-- Selected Dates Summary Badge -->
               <div id="selected-dates-summary" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:0.78rem; color:#30496d;">
-                <strong>Selected Dates:</strong> <span id="selected-dates-text">Calculating dates...</span>
+                <strong>Selected Dates:</strong> <span id="selected-dates-text">1 Working Day: Tomorrow</span>
               </div>
             </div>
 
@@ -991,8 +1002,35 @@
 
 
 
+            <!-- Conditional Ad-Hoc Spot Registration Details (Visible ONLY for Same-Day Ad-Hoc) -->
+            <div id="adhoc-credentials-container" style="display:none; background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:10px; padding:14px; margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                <span style="font-size:1rem;">🆔</span>
+                <strong style="color:#0369a1; font-size:0.85rem;">Ad-Hoc Spot Registration Details</strong>
+                <span style="font-size:0.7rem; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:auto;">Required for Ad-Hoc</span>
+              </div>
+              <p style="font-size:0.75rem; color:#0284c7; margin:0 0 10px 0;">
+                Please provide your Employee ID and Official Email for ad-hoc cafeteria accounting:
+              </p>
+              
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+                <div>
+                  <label for="booking-emp-id" style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                    Employee ID *
+                  </label>
+                  <input type="text" id="booking-emp-id" placeholder="e.g. EMP-104" style="width:100%; box-sizing:border-box; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; font-weight:600; background:white;">
+                </div>
+                <div>
+                  <label for="booking-emp-email" style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                    Onix Email ID *
+                  </label>
+                  <input type="email" id="booking-emp-email" placeholder="e.g. name@onixnet.com" style="width:100%; box-sizing:border-box; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; font-weight:600; background:white;">
+                </div>
+              </div>
+            </div>
+
             <div class="form-group">
-              <label>Select Lunch Preference for Tomorrow *</label>
+              <label id="booking-meal-pref-label">Select Lunch Preference *</label>
               <div class="meal-options" style="grid-template-columns: repeat(2, 1fr);">
                 <div class="meal-radio-card selected-veg" id="option-veg" onclick="selectMealOption('veg')">
                   <span class="icon">🥗</span>
@@ -1015,13 +1053,16 @@
             </button>
           </form>
 
-          <!-- Walk-in Fallback Banner -->
-          <div class="walkin-notice">
-            <span style="font-size:1.2rem;">ℹ️</span>
-            <div>
-              <strong>Forgot to book yesterday for today's lunch?</strong><br>
-              A physical register is kept at the cafeteria counter. You can write your name there and take lunch from the vendor's daily walk-in buffer stock.
+          <!-- Same-Day Ad-Hoc Booking Trigger Banner -->
+          <div class="walkin-notice" style="background:#f0f9ff; border:1.5px solid #bae6fd; display:flex; align-items:center; gap:12px; margin-top:16px;">
+            <span style="font-size:1.4rem;">⚡</span>
+            <div style="flex:1;">
+              <strong style="color:#0369a1;">Missed yesterday's advance lunch cutoff?</strong><br>
+              <span style="font-size:0.8rem; color:#0284c7;">Register now for Same-Day Ad-Hoc Spot Lunch.</span>
             </div>
+            <button type="button" class="btn" onclick="selectBookingPeriod('unplanned')" style="width:auto; padding:8px 14px; font-size:0.8rem; background:#0284c7; color:white; font-weight:700; border-radius:8px; border:none; cursor:pointer;">
+              Same-Day Ad-Hoc &rarr;
+            </button>
           </div>
         </div>
       </div>
@@ -1131,7 +1172,10 @@
         <!-- Live Serving Summary (Today & Current Month) -->
         <h3 style="font-size:0.95rem; margin-bottom:10px; color:var(--primary); display:flex; justify-content:space-between; align-items:center;">
           <span>🍽️ Live Meal Serving Summary</span>
-          <span style="font-size:0.72rem; color:#047857; background:#dcfce7; padding:2px 8px; border-radius:10px; font-weight:700;">Active Serving</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" class="btn btn-primary" onclick="syncLiveBookingsFromGoogleSheet()" style="width:auto; padding:3px 10px; font-size:0.75rem; background:#30496d;">🔄 Sync Live Sheet</button>
+            <span style="font-size:0.72rem; color:#047857; background:#dcfce7; padding:2px 8px; border-radius:10px; font-weight:700;">Active Serving</span>
+          </div>
         </h3>
         <div class="metric-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom:16px;">
           <div class="metric-card" style="border-top: 4px solid #10b981;">
@@ -1180,7 +1224,48 @@
 
         <hr style="border:none; border-top:1px solid var(--border); margin: 20px 0;">
 
-        <!-- LIVE MEAL PASS QR SCANNER & FOOD SERVING STATION -->
+        <!-- TODAY'S COUNTER SERVING QR & DAILY PIN DISPLAY -->
+        <div class="card" style="border:2px solid #059669; background:#f0fdf4; margin-bottom:20px; box-shadow:0 4px 12px rgba(5,150,105,0.08);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0; font-size:1.1rem; color:#065f46;">
+              <span>🍽️ Cafeteria Serving Desk Counter Display</span>
+            </div>
+            <span style="background:#059669; color:white; font-size:0.75rem; padding:4px 12px; border-radius:12px; font-weight:800;">ACTIVE COUNTER</span>
+          </div>
+          <p style="font-size:0.82rem; color:#047857; margin-bottom:14px;">
+            Display this QR Code & Daily PIN on the counter standee or tablet. Employees in line scan this QR or type the PIN on their phones to self-mark attendance and collect their plate.
+          </p>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; align-items:center; background:white; padding:16px; border-radius:12px; border:1px solid #a7f3d0;">
+            <div style="text-align:center;">
+              <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase; margin-bottom:6px;">Desk Serving QR Code</div>
+              <div id="vendor-counter-qr-wrapper" style="display:inline-block; padding:10px; background:white; border:2px solid #059669; border-radius:10px;">
+                <img id="vendor-counter-qr-img" src="" alt="Counter Serving QR" style="width:180px; height:180px; object-fit:contain; display:block;">
+              </div>
+              <div style="font-size:0.72rem; color:#059669; font-weight:700; margin-top:6px;">Employees Scan This QR in Queue</div>
+            </div>
+
+            <div style="text-align:center;">
+              <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase; margin-bottom:6px;">Today's 4-Digit Counter PIN</div>
+              <div style="background:#0f172a; border:2px solid #334155; border-radius:12px; padding:16px; margin-bottom:10px;">
+                <div style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em;">Queue Quick Code</div>
+                <div id="vendor-counter-pin-display" style="font-size:3.2rem; font-weight:900; color:#38bdf8; font-family:monospace; letter-spacing:0.12em; line-height:1.1;">5824</div>
+                <div style="font-size:0.72rem; color:#cbd5e1; margin-top:4px;">Employees can type this PIN on their phone</div>
+              </div>
+              
+              <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                <button type="button" class="btn" onclick="printCounterStandee()" style="width:auto; padding:8px 14px; font-size:0.8rem; background:#047857; color:white; font-weight:700; border-radius:8px; border:none; cursor:pointer;">
+                  🖨️ Print Counter Standee (A4)
+                </button>
+                <button type="button" class="btn btn-outline" onclick="openFullscreenCounterKiosk()" style="width:auto; padding:8px 14px; font-size:0.8rem; color:#065f46; border-color:#059669; font-weight:700; border-radius:8px;">
+                  📱 Open Fullscreen Kiosk
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE MEAL PASS QR SCANNER & FOOD SERVING STATION (FALLBACK MANUAL SERVING) -->
         <div style="background:#f8fafc; border:2px solid #30496d; border-radius:12px; padding:16px; margin-bottom:20px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div class="card-title" style="margin-bottom:0; font-size:1.05rem;">
@@ -1316,9 +1401,24 @@
 
         <hr style="border:none; border-top:1px solid var(--border); margin: 24px 0;">
 
-        <!-- Vendor Feedback Inbox -->
-        <div class="card-title">
-          <span>⭐ Employee Food Feedback Inbox</span>
+        <!-- Vendor Feedback Inbox with Month Filter & Excel Export -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">
+            <span>⭐ Employee Food Feedback & Ratings</span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="vendor-feedback-month-filter" onchange="renderVendorFeedbackList()" style="font-size:0.78rem; padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; font-weight:700; color:#30496d; background:white;">
+              <option value="all">All Months</option>
+            </select>
+            <button type="button" class="btn" onclick="exportMonthlyFeedbackCsv('vendor')" style="width:auto; padding:6px 12px; font-size:0.78rem; background:#0f766e; color:white; font-weight:700; border-radius:8px; border:none; cursor:pointer;">
+              📥 Download Monthly Feedback (Excel)
+            </button>
+          </div>
+        </div>
+        <div id="vendor-feedback-month-summary" style="display:flex; gap:10px; font-size:0.78rem; color:#475569; margin-bottom:10px; background:#f1f5f9; padding:6px 12px; border-radius:8px;">
+          <span>Total Reviews: <strong id="vendor-fb-total-count" style="color:#30496d;">0</strong></span>
+          <span>&bull;</span>
+          <span>Average Rating: <strong id="vendor-fb-avg-rating" style="color:#f59e0b;">0 ★</strong></span>
         </div>
         <div id="vendor-feedback-list">
           <!-- Dynamically populated feedback -->
@@ -1355,7 +1455,10 @@
         <!-- Live Serving Summary (Today & Current Month) for Committee -->
         <h3 style="font-size:0.95rem; margin-bottom:10px; color:var(--primary); display:flex; justify-content:space-between; align-items:center;">
           <span>🍽️ Today & Month Serving Overview</span>
-          <span style="font-size:0.72rem; color:#047857; background:#dcfce7; padding:2px 8px; border-radius:10px; font-weight:700;">Live Attendance</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" class="btn btn-primary" onclick="syncLiveBookingsFromGoogleSheet()" style="width:auto; padding:3px 10px; font-size:0.75rem; background:#30496d;">🔄 Sync Live Sheet</button>
+            <span style="font-size:0.72rem; color:#047857; background:#dcfce7; padding:2px 8px; border-radius:10px; font-weight:700;">Live Attendance</span>
+          </div>
         </h3>
         <div class="metric-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom:16px;">
           <div class="metric-card" style="border-top: 4px solid #10b981;">
@@ -1367,6 +1470,11 @@
             <div class="metric-val" id="committee-month-served-count" style="color:#30496d;">0</div>
             <div class="metric-label">Current Month Total Served</div>
             <div style="font-size:0.72rem; color:#64748b; margin-top:2px;" id="committee-month-veg-nonveg">Veg: 0 | Non-Veg: 0</div>
+          </div>
+          <div class="metric-card" style="border-top: 4px solid #f59e0b;">
+            <div class="metric-val" id="committee-unplanned-count" style="color:#b45309;">0</div>
+            <div class="metric-label">⚡ Unplanned Emergency</div>
+            <div style="font-size:0.72rem; color:#78350f; margin-top:2px;">Same-Day Registered</div>
           </div>
         </div>
 
@@ -1477,6 +1585,45 @@
           </div>
         </details>
 
+        <!-- Food Committee Monthly Feedback & Ratings Overview -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:24px; margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">
+            <span>⭐ Monthly Food Feedback & Audit Log</span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="committee-feedback-month-filter" onchange="renderCommitteeFeedbackList()" style="font-size:0.78rem; padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; font-weight:700; color:#30496d; background:white;">
+              <option value="all">All Months</option>
+            </select>
+            <button type="button" class="btn" onclick="exportMonthlyFeedbackCsv('committee')" style="width:auto; padding:6px 12px; font-size:0.78rem; background:#0f766e; color:white; font-weight:700; border-radius:8px; border:none; cursor:pointer;">
+              📥 Download Monthly Feedback (Excel)
+            </button>
+          </div>
+        </div>
+        <div id="committee-feedback-month-summary" style="display:flex; gap:10px; font-size:0.78rem; color:#475569; margin-bottom:10px; background:#f1f5f9; padding:6px 12px; border-radius:8px;">
+          <span>Total Reviews: <strong id="committee-fb-total-count" style="color:#30496d;">0</strong></span>
+          <span>&bull;</span>
+          <span>Average Rating: <strong id="committee-fb-avg-rating" style="color:#f59e0b;">0 ★</strong></span>
+        </div>
+        <div id="committee-feedback-list" style="margin-bottom:24px;">
+          <!-- Dynamically populated feedback -->
+        </div>
+
+        <!-- Master Password Security Section (Restricted to nikhil.shelke@onixnet.com) -->
+        <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:16px; margin-bottom:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <div class="card-title" style="margin-bottom:0; font-size:1rem; color:#30496d;">
+              <span>🔐 Staff & Vendor Access Security</span>
+            </div>
+            <span style="font-size:0.72rem; background:#e0e7ff; color:#3730a3; padding:2px 8px; border-radius:10px; font-weight:700;">Unified Master Password</span>
+          </div>
+          <p style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
+            Manage the unified master access password used for both Vendor Kitchen and Food Committee logins. For security, changing the password requires an OTP sent to <strong>nikhil.shelke@onixnet.com</strong>.
+          </p>
+          <button type="button" class="btn btn-primary" onclick="openStaffPasswordChangeModal()" style="width:auto; padding:8px 18px; font-size:0.82rem; background:#30496d;">
+            🔑 Change Master Password (with Email OTP)
+          </button>
+        </div>
+
         <hr style="border:none; border-top:1px solid var(--border); margin: 24px 0;">
 
         <!-- Admin Controls -->
@@ -1518,7 +1665,7 @@
             </span>
             <button type="button" onclick="forgetSavedStaffPassword()" style="background:none; border:none; color:#ef4444; font-size:0.75rem; font-weight:700; cursor:pointer; text-decoration:underline;">Forget</button>
           </div>
-          <p style="font-size:0.75rem; color:#15803d; margin:4px 0 10px 0;">1-Click Direct Access (पुन्हा पासवर्ड टाईप करायची गरज नाही):</p>
+          <p style="font-size:0.75rem; color:#15803d; margin:4px 0 10px 0;">1-Click Direct Access (No need to re-enter password):</p>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
             <button type="button" class="btn" onclick="quickLoginAs('vendor')" style="padding:9px 10px; font-size:0.82rem; background:#0284c7; color:#fff; font-weight:700; border-radius:8px; border:none; cursor:pointer;">👨‍🍳 Enter Vendor</button>
             <button type="button" class="btn" onclick="quickLoginAs('committee')" style="padding:9px 10px; font-size:0.82rem; background:#30496d; color:#fff; font-weight:700; border-radius:8px; border:none; cursor:pointer;">👥 Enter Admin</button>
@@ -1541,7 +1688,7 @@
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
           <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#334155; cursor:pointer; font-weight:600; margin:0;">
             <input type="checkbox" id="remember-staff-pwd" checked style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;">
-            <span>Remember Password on this device (पासवर्ड सेव्ह ठेवा)</span>
+            <span>Remember Password on this device</span>
           </label>
         </div>
 
@@ -1609,6 +1756,79 @@
     </div>
   </div>
 
+  <!-- CORPORATE AD-HOC SAME-DAY BOOKING ADVISORY MODAL -->
+  <div id="unplanned-advisory-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:480px; border-top:5px solid #0284c7; text-align:left;">
+      <button class="modal-close" onclick="closeUnplannedAdvisory(false)">&times;</button>
+      <div style="text-align:center; font-size:2.4rem; margin-bottom:8px;">🏢</div>
+      <h3 style="font-size:1.15rem; font-weight:800; color:#0369a1; text-align:center; margin-bottom:8px;">
+        Ad-Hoc Same-Day Meal Registration Policy
+      </h3>
+      <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:14px; font-size:0.84rem; color:#0369a1; line-height:1.5; margin-bottom:14px;">
+        <p style="margin:0 0 8px 0; font-weight:700;">
+          Corporate Food Committee Catering Policy:
+        </p>
+        <p style="margin:0 0 8px 0;">
+          Cafeteria catering quantities are scheduled in advance based on prior-day bookings to ensure portion availability and avoid food wastage.
+        </p>
+        <p style="margin:0;">
+          Ad-hoc same-day bookings impact catering forecasting. <strong>Please ensure advance booking whenever possible.</strong>
+        </p>
+      </div>
+      <label style="display:flex; align-items:flex-start; gap:10px; font-size:0.82rem; color:#334155; margin-bottom:16px; cursor:pointer;">
+        <input type="checkbox" id="unplanned-agree-check" style="margin-top:3px; transform:scale(1.2);">
+        <span>I acknowledge the kitchen forecasting impact and request an ad-hoc meal for today.</span>
+      </label>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn btn-outline" onclick="closeUnplannedAdvisory(false)" style="flex:1;">Cancel</button>
+        <button type="button" class="btn" onclick="confirmUnplannedAdvisory()" style="flex:1; background:#0284c7; color:white; font-weight:700;">Acknowledge & Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMPLOYEE COUNTER QR CAMERA SCANNER MODAL -->
+  <div id="emp-counter-scanner-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:400px; text-align:center; background:#0f172a; color:white; border:2px solid #10b981;">
+      <button class="modal-close" onclick="closeEmployeeCounterScanner()" style="color:white;">&times;</button>
+      <h3 style="font-size:1.1rem; color:#34d399; margin-bottom:6px;">📷 Scan Counter Serving QR</h3>
+      <p style="font-size:0.78rem; color:#cbd5e1; margin-bottom:12px;">Point camera at the QR code displayed on the cafeteria serving desk</p>
+      
+      <div style="position:relative; width:100%; max-width:300px; height:260px; margin:0 auto; overflow:hidden; border-radius:10px; background:#000;">
+        <video id="emp-camera-video-preview" style="width:100%; height:100%; object-fit:cover;" playsinline autoplay muted></video>
+        <div style="position:absolute; inset:25px; border:2px dashed #10b981; border-radius:12px; pointer-events:none;"></div>
+        <div style="position:absolute; top:25px; left:25px; right:25px; height:3px; background:#10b981; box-shadow:0 0 10px #10b981; animation:scanLaser 2s infinite linear; pointer-events:none;"></div>
+      </div>
+
+      <p id="emp-scan-status-text" style="font-size:0.75rem; color:#94a3b8; margin-top:10px;">Align counter QR inside the frame...</p>
+      
+      <div style="margin-top:12px; display:flex; gap:8px; justify-content:center;">
+        <button type="button" class="btn btn-outline" onclick="closeEmployeeCounterScanner()" style="width:auto; padding:6px 16px; color:white; border-color:#cbd5e1; font-size:0.8rem;">✕ Close Scanner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULLSCREEN COUNTER KIOSK MODAL -->
+  <div id="counter-kiosk-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:440px; text-align:center; background:#0f172a; color:white; border:3px solid #059669; padding:24px;">
+      <button class="modal-close" onclick="closeFullscreenCounterKiosk()" style="color:white;">&times;</button>
+      <div style="font-size:0.8rem; letter-spacing:0.1em; color:#a7f3d0; text-transform:uppercase;">Onix Cafeteria Serving Counter</div>
+      <h2 style="font-size:1.3rem; color:white; margin:6px 0 14px 0;" id="kiosk-date-title">Today's Serving Desk</h2>
+
+      <div style="background:white; border-radius:12px; padding:16px; display:inline-block; margin-bottom:14px; box-shadow:0 0 20px rgba(16,185,129,0.3);">
+        <img id="kiosk-qr-img" src="" alt="Counter QR" style="width:220px; height:220px; object-fit:contain; display:block;">
+        <p style="color:#065f46; font-size:0.75rem; font-weight:800; margin-top:6px;">Scan to Mark Attendance</p>
+      </div>
+
+      <div style="background:#1e293b; border:2px solid #334155; border-radius:12px; padding:12px; margin-bottom:14px;">
+        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em;">Or Enter 4-Digit Counter PIN</div>
+        <div id="kiosk-pin-display" style="font-size:3.5rem; font-weight:900; color:#38bdf8; font-family:monospace; letter-spacing:0.12em; line-height:1.1;">5824</div>
+      </div>
+
+      <p style="font-size:0.78rem; color:#94a3b8;">Place phone / tablet on counter desk for queue scanning</p>
+      <button type="button" class="btn btn-outline" onclick="closeFullscreenCounterKiosk()" style="width:auto; margin:10px auto 0; color:white; border-color:#64748b; font-size:0.78rem; padding:6px 18px;">✕ Close Kiosk Mode</button>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast" id="toast-bar">
     <span id="toast-icon">✅</span>
@@ -1656,71 +1876,84 @@
       { day: "Friday", date: "Oct 16", dal: "Dal Makhani", sabji1: "Dum Aloo", sabji2: "Paneer Tikka Masala", rotiRice: "Chapati & Veg Pulao", nonveg: "Egg Bhurji Special", sweet: "Gulab Jamun" }
     ];
 
+    // Robust LocalStorage Deserializer (Guarantees Zero Startup Crashes)
+    function safeGetStorage(key, fallback) {
+      try {
+        const item = localStorage.getItem(key);
+        if (!item || item === 'undefined' || item === 'null') return fallback;
+        return JSON.parse(item);
+      } catch(e) {
+        return fallback;
+      }
+    }
+
     // Initialize State
     let appState = {
       currentRole: 'employee',
       currentWeekView: 'this',
       vendorEditWeek: 'this',
-      menuCurrent: JSON.parse(localStorage.getItem('onix_menu_current')) || DEFAULT_WEEK_CURRENT,
-      menuNext: JSON.parse(localStorage.getItem('onix_menu_next')) || DEFAULT_WEEK_NEXT,
-      bookings: JSON.parse(localStorage.getItem('onix_bookings')) || [],
-      feedbacks: JSON.parse(localStorage.getItem('onix_feedbacks')) || [],
-      activeUserPass: JSON.parse(localStorage.getItem('onix_active_pass')) || null
+      menuCurrent: safeGetStorage('onix_menu_current', DEFAULT_WEEK_CURRENT),
+      menuNext: safeGetStorage('onix_menu_next', DEFAULT_WEEK_NEXT),
+      bookings: safeGetStorage('onix_bookings', []),
+      feedbacks: safeGetStorage('onix_feedbacks', []),
+      activeUserPass: safeGetStorage('onix_active_pass', null)
     };
 
     // ==========================================
     // DATE & CUTOFF CLOCK LOGIC (11:59 PM EOD)
     // ==========================================
     function updateClockAndCutoff() {
-      const now = new Date();
-      
-      // Cutoff is today at 23:59:59 (11:59 PM)
-      const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-      const diffMs = cutoff - now;
+      try {
+        const now = new Date();
+        const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        const diffMs = cutoff - now;
 
-      const clockEl = document.getElementById('cutoff-clock');
-      const closedAlertEl = document.getElementById('booking-closed-alert');
-      const submitBtnEl = document.getElementById('btn-submit-booking');
+        const clockEl = document.getElementById('cutoff-clock');
+        const closedAlertEl = document.getElementById('booking-closed-alert');
+        const submitBtnEl = document.getElementById('btn-submit-booking');
 
-      if (diffMs > 0) {
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
-        clockEl.textContent = `${hours}h ${mins}m ${secs}s left`;
-        clockEl.style.background = 'var(--accent)';
-        if (closedAlertEl) closedAlertEl.style.display = 'none';
-        if (submitBtnEl) submitBtnEl.disabled = false;
-      } else {
-        clockEl.textContent = 'Closed (11:59 PM)';
-        clockEl.style.background = '#64748b';
-        if (closedAlertEl) closedAlertEl.style.display = 'flex';
-        if (submitBtnEl) submitBtnEl.disabled = true;
-      }
-
-      // Calculate Tomorrow's Date String
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const tomorrowDayName = days[tomorrow.getDay()];
-      const tomorrowFormatted = `${tomorrowDayName}, ${months[tomorrow.getMonth()]} ${tomorrow.getDate()}`;
-
-      const targetDateEl = document.getElementById('booking-target-date-text');
-      if (targetDateEl) {
-        targetDateEl.textContent = `Advance Booking for Tomorrow: ${tomorrowFormatted}`;
-      }
-
-      // Update Tomorrow's Menu preview
-      const previewEl = document.getElementById('tomorrow-menu-desc');
-      if (previewEl) {
-        // Match day of week in menuCurrent
-        const match = appState.menuCurrent.find(m => m.day.toLowerCase() === tomorrowDayName.toLowerCase());
-        if (match) {
-          previewEl.innerHTML = `<strong>${match.dal || '—'}</strong> &bull; ${match.sabji1 || '—'} &bull; ${match.sabji2 || '—'} &bull; ${match.rotiRice || '—'} ` +
-            (match.nonveg && match.nonveg !== '—' ? `&bull; <span style="color:var(--nonveg); font-weight:700;">[Non-Veg: ${match.nonveg}]</span>` : '');
-        } else {
-          previewEl.textContent = "Weekend / Standard buffet arrangement.";
+        if (clockEl) {
+          if (diffMs > 0) {
+            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+            const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+            clockEl.textContent = `${hours}h ${mins}m ${secs}s left`;
+            clockEl.style.background = 'var(--accent)';
+            if (closedAlertEl) closedAlertEl.style.display = 'none';
+            if (submitBtnEl && activeBookingPeriod !== 'unplanned') submitBtnEl.disabled = false;
+          } else {
+            clockEl.textContent = 'Closed (11:59 PM)';
+            clockEl.style.background = '#64748b';
+            if (closedAlertEl) closedAlertEl.style.display = 'flex';
+          }
         }
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const tomorrowDayName = days[tomorrow.getDay()];
+        const tomorrowFormatted = `${tomorrowDayName}, ${months[tomorrow.getMonth()]} ${tomorrow.getDate()}`;
+
+        const targetDateEl = document.getElementById('booking-target-date-text');
+        if (targetDateEl) {
+          targetDateEl.textContent = (activeBookingPeriod === 'unplanned')
+            ? `Ad-Hoc Spot Registration for Today: ${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`
+            : `Advance Booking for Tomorrow: ${tomorrowFormatted}`;
+        }
+
+        const previewEl = document.getElementById('tomorrow-menu-desc');
+        if (previewEl && appState.menuCurrent && Array.isArray(appState.menuCurrent)) {
+          const match = appState.menuCurrent.find(m => m && m.day && m.day.toLowerCase() === tomorrowDayName.toLowerCase());
+          if (match) {
+            previewEl.innerHTML = `<strong>${match.dal || '—'}</strong> &bull; ${match.sabji1 || '—'} &bull; ${match.sabji2 || '—'} &bull; ${match.rotiRice || '—'} ` +
+              (match.nonveg && match.nonveg !== '—' ? `&bull; <span style="color:var(--nonveg); font-weight:700;">[Non-Veg: ${match.nonveg}]</span>` : '');
+          } else {
+            previewEl.textContent = "Chef's Special Buffet Arrangement.";
+          }
+        }
+      } catch(err) {
+        console.warn("Clock update non-fatal:", err);
       }
     }
 
@@ -1757,8 +1990,14 @@
       if (role === 'vendor') roleTextEl.textContent = 'Vendor Mode (Active)';
       if (role === 'committee') roleTextEl.textContent = 'Admin Mode (Active)';
 
-      if (role === 'vendor') renderVendorDashboard();
-      if (role === 'committee') renderCommitteeDashboard();
+      if (role === 'vendor') {
+        renderVendorDashboard();
+        syncLiveBookingsFromGoogleSheet(true);
+      }
+      if (role === 'committee') {
+        renderCommitteeDashboard();
+        syncLiveBookingsFromGoogleSheet(true);
+      }
     }
 
     // ==========================================
@@ -1872,17 +2111,33 @@
       document.getElementById('login-view-otp').style.display = 'none';
     }
 
+    function openStaffPasswordChangeModal() {
+      openLoginModal();
+      showOtpResetView();
+    }
+
     function sendOtpToAdminEmail() {
       generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
       document.getElementById('otp-step-1').style.display = 'none';
       document.getElementById('otp-step-2').style.display = 'block';
       
       const banner = document.getElementById('otp-status-banner');
-      banner.innerHTML = `<strong>Verification OTP sent to:</strong> ${ADMIN_EMAIL}<br>
+      banner.innerHTML = `<strong>Verification OTP dispatched to:</strong> ${ADMIN_EMAIL}<br>
         <div style="margin-top:6px; font-size:1.1rem; font-weight:800; color:#047857; letter-spacing:0.1em;">${generatedOtp}</div>
-        <span style="font-size:0.7rem; color:#065f46;">(Use this OTP to set your new password)</span>`;
+        <span style="font-size:0.7rem; color:#065f46;">(Dispatched to email &bull; Backup OTP: <strong>${generatedOtp}</strong>)</span>`;
 
-      showToast(`OTP generated for ${ADMIN_EMAIL}`, "📩");
+      // Trigger real email dispatch via Google Apps Script
+      try {
+        syncToGoogleSheet({
+          action: 'sendOtp',
+          email: ADMIN_EMAIL,
+          otp: generatedOtp
+        });
+      } catch(err) {
+        console.warn("OTP dispatch error:", err);
+      }
+
+      showToast(`OTP dispatched to ${ADMIN_EMAIL}`, "📩");
     }
 
     function verifyOtpAndSetPassword() {
@@ -1900,10 +2155,23 @@
       }
 
       localStorage.setItem('onix_master_password', newPwd);
+      localStorage.setItem('onix_saved_pwd', newPwd);
+
+      // Sync updated password to Google Script Properties
+      try {
+        syncToGoogleSheet({
+          action: 'updatePassword',
+          newPassword: newPwd
+        });
+      } catch(err) {
+        console.warn("Password sync error:", err);
+      }
+
       generatedOtp = null;
-      showToast("Password updated successfully!", "🎉");
+      showToast("Master password updated successfully!", "🎉");
       hideOtpResetView();
-      document.getElementById('login-pwd-input').value = newPwd;
+      const pwdInput = document.getElementById('login-pwd-input');
+      if (pwdInput) pwdInput.value = newPwd;
     }
 
     // ==========================================
@@ -2003,6 +2271,78 @@
       setTimeout(() => {
         showToast("All bookings pushed to Google Sheet! Check your sheet.", "🎉");
       }, appState.bookings.length * 300 + 500);
+    }
+
+    // ==========================================
+    // REAL-TIME LIVE GOOGLE SHEETS SYNC (JSONP)
+    // ==========================================
+    function syncLiveBookingsFromGoogleSheet(silent = false) {
+      const gasUrl = getActiveGasUrl();
+      if (!gasUrl) return;
+
+      const cbName = 'onGasBookingsLoaded_' + Math.floor(Math.random() * 10000000);
+      window[cbName] = function(res) {
+        try {
+          if (res && res.status === 'success' && Array.isArray(res.bookings)) {
+            const remoteBookings = res.bookings;
+            if (remoteBookings.length > 0) {
+              const bookingMap = new Map();
+
+              // 1. Add all remote bookings from Google Sheets
+              remoteBookings.forEach((rb, idx) => {
+                const key = (rb.dateDisplay || rb.date) + '_' + (rb.tokenCode || rb.empId || idx);
+                bookingMap.set(key, {
+                  id: 'BK-' + (Date.now() - idx * 1000),
+                  date: rb.date,
+                  dateDisplay: rb.dateDisplay || rb.date,
+                  name: rb.name || 'Onix Staff',
+                  empId: rb.empId || '',
+                  email: (rb.empId && rb.empId.includes('@')) ? rb.empId : '',
+                  mealType: (rb.mealType || 'veg').toLowerCase(),
+                  tokenCode: rb.tokenCode || 'A01',
+                  status: rb.status || 'Confirmed',
+                  servedAt: rb.servedAt || '',
+                  servedDate: (rb.status && rb.status.includes('Served')) ? (rb.date || '') : '',
+                  timestamp: ''
+                });
+              });
+
+              // 2. Retain any recent local bookings that might not have appeared in remote yet
+              appState.bookings.forEach(lb => {
+                const key = (lb.dateDisplay || lb.date) + '_' + (lb.tokenCode || lb.empId);
+                if (!bookingMap.has(key)) {
+                  bookingMap.set(key, lb);
+                }
+              });
+
+              appState.bookings = Array.from(bookingMap.values());
+              try {
+                localStorage.setItem('onix_bookings', JSON.stringify(appState.bookings));
+              } catch(e) {}
+
+              calculateSelectedDates();
+              if (appState.currentRole === 'vendor') renderVendorDashboard();
+              if (appState.currentRole === 'committee') renderCommitteeDashboard();
+              if (!silent) showToast(`Synced ${remoteBookings.length} bookings from Google Sheet!`, "☁️");
+            }
+          }
+        } catch(err) {
+          console.warn("Live sync error:", err);
+        } finally {
+          delete window[cbName];
+          const scriptTag = document.getElementById(cbName);
+          if (scriptTag && scriptTag.parentNode) scriptTag.parentNode.removeChild(scriptTag);
+        }
+      };
+
+      const script = document.createElement('script');
+      script.id = cbName;
+      script.src = gasUrl + (gasUrl.includes('?') ? '&' : '?') + 'action=getBookings&callback=' + cbName + '&_t=' + Date.now();
+      script.onerror = function() {
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      };
+      document.head.appendChild(script);
     }
 
     // ==========================================
@@ -2165,7 +2505,7 @@
       const chosen = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
 
       if (chosen.getDay() === 0 || chosen.getDay() === 6) {
-        alert("⚠️ सूचना: शनिवार व रविवारी कॅफेटेरिया बंद असतो. कृपया सोमवार ते शुक्रवार मधील कामाचा दिवस निवडा.");
+        alert("⚠️ Notice: Cafeteria is closed on weekends (Saturday & Sunday). Please select a working day (Monday - Friday).");
         return;
       }
 
@@ -2183,12 +2523,68 @@
       calculateSelectedDates();
     }
 
+    let isUnplannedNoticeAgreed = false;
+
+    function openUnplannedAdvisoryModal() {
+      const modal = document.getElementById('unplanned-advisory-modal');
+      const check = document.getElementById('unplanned-agree-check');
+      if (check) check.checked = false;
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeUnplannedAdvisory(confirmed) {
+      const modal = document.getElementById('unplanned-advisory-modal');
+      if (modal) modal.style.display = 'none';
+      if (!confirmed) {
+        selectBookingPeriod('tomorrow');
+      }
+    }
+
+    function confirmUnplannedAdvisory() {
+      const check = document.getElementById('unplanned-agree-check');
+      if (!check || !check.checked) {
+        showToast("Please acknowledge the catering policy checkbox to proceed", "⚠️");
+        return;
+      }
+      isUnplannedNoticeAgreed = true;
+      const modal = document.getElementById('unplanned-advisory-modal');
+      if (modal) modal.style.display = 'none';
+      activeBookingPeriod = 'unplanned';
+      ['tomorrow', 'thisweek', 'nextweek', 'month', 'custom', 'unplanned'].forEach(p => {
+        const el = document.getElementById(`period-${p}`);
+        if (el) el.className = (p === 'unplanned') ? 'meal-radio-card selected-veg' : 'meal-radio-card';
+      });
+
+      // Show Ad-Hoc credentials container ONLY for Same-Day Ad-Hoc
+      const adhocBox = document.getElementById('adhoc-credentials-container');
+      if (adhocBox) {
+        adhocBox.style.display = 'block';
+        adhocBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      const customBox = document.getElementById('custom-date-container');
+      if (customBox) customBox.style.display = 'none';
+
+      calculateSelectedDates();
+      updateClockAndCutoff();
+      showToast("Same-Day Ad-Hoc Booking enabled for Today", "⚡");
+    }
+
     function selectBookingPeriod(period) {
+      if (period === 'unplanned') {
+        openUnplannedAdvisoryModal();
+        return;
+      }
+
       activeBookingPeriod = period;
-      ['tomorrow', 'thisweek', 'nextweek', 'month', 'custom'].forEach(p => {
+      ['tomorrow', 'thisweek', 'nextweek', 'month', 'custom', 'unplanned'].forEach(p => {
         const el = document.getElementById(`period-${p}`);
         if (el) el.className = (p === period) ? 'meal-radio-card selected-veg' : 'meal-radio-card';
       });
+
+      // Hide Ad-Hoc credentials container for all advance bookings
+      const adhocBox = document.getElementById('adhoc-credentials-container');
+      if (adhocBox) adhocBox.style.display = 'none';
 
       const customBox = document.getElementById('custom-date-container');
       if (customBox) {
@@ -2199,6 +2595,7 @@
       }
 
       calculateSelectedDates();
+      updateClockAndCutoff();
     }
 
     function calculateSelectedDates() {
@@ -2220,7 +2617,10 @@
         };
       }
 
-      if (activeBookingPeriod === 'tomorrow') {
+      if (activeBookingPeriod === 'unplanned') {
+        const d = new Date(); // Today's date
+        dates.push(formatDay(d));
+      } else if (activeBookingPeriod === 'tomorrow') {
         const d = new Date();
         d.setDate(d.getDate() + 1);
         while (!isWorkingDay(d)) {
@@ -2288,7 +2688,9 @@
           submitBtn.innerHTML = `<span>⚠️ Select at least 1 lunch date</span>`;
         } else {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = (activeBookingPeriod === 'tomorrow')
+          submitBtn.innerHTML = (activeBookingPeriod === 'unplanned')
+            ? `<span>⚡ Confirm Same-Day Ad-Hoc (${dates[0].display})</span>`
+            : (activeBookingPeriod === 'tomorrow')
             ? `<span>✅ Confirm Tomorrow's Booking (${dates[0].display})</span>`
             : (activeBookingPeriod === 'custom' && dates.length === 1)
             ? `<span>✅ Confirm Specific Booking (${dates[0].display})</span>`
@@ -2303,6 +2705,113 @@
     calculateSelectedDates();
 
     // ==========================================
+    // ==========================================
+    // DAILY COUNTER CODE & REVERSE SERVING ENGINE
+    // ==========================================
+    function getDailyCounterCode(targetDate = null) {
+      const d = targetDate ? new Date(targetDate) : new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const seed = (y * 10000) + (parseInt(m, 10) * 100) + parseInt(day, 10);
+      const pin = String(((seed * 31 + 17) % 9000) + 1000); // Clean 4-digit code e.g. 5824
+      const dateStr = `${y}-${m}-${day}`;
+      const payload = JSON.stringify({
+        action: "counter_serve",
+        date: dateStr,
+        pin: pin,
+        secret: "ONIX-MEAL-PASS"
+      });
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(payload)}`;
+      return { pin, dateStr, payload, qrUrl };
+    }
+
+    function renderVendorCounterDisplay() {
+      const dailyCode = getDailyCounterCode();
+      const qrImg = document.getElementById('vendor-counter-qr-img');
+      const pinEl = document.getElementById('vendor-counter-pin-display');
+      if (qrImg) qrImg.src = dailyCode.qrUrl;
+      if (pinEl) pinEl.textContent = dailyCode.pin;
+    }
+
+    function openFullscreenCounterKiosk() {
+      const dailyCode = getDailyCounterCode();
+      const modal = document.getElementById('counter-kiosk-modal');
+      const qrImg = document.getElementById('kiosk-qr-img');
+      const pinEl = document.getElementById('kiosk-pin-display');
+      const titleEl = document.getElementById('kiosk-date-title');
+      if (qrImg) qrImg.src = dailyCode.qrUrl;
+      if (pinEl) pinEl.textContent = dailyCode.pin;
+      if (titleEl) titleEl.textContent = `${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} Serving Desk`;
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeFullscreenCounterKiosk() {
+      const modal = document.getElementById('counter-kiosk-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function printCounterStandee() {
+      const dailyCode = getDailyCounterCode();
+      const printWin = window.open('', '_blank', 'width=700,height=900');
+      const todayFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      console.error("DOM JSERROR:", msg, "line:", line);
+      window.__lastJsError = { msg: msg, line: line, col: col };
+    };
+  </script>
+          <title>Onix Cafeteria Counter Standee</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; text-align: center; padding: 40px; margin: 0; background: #fff; color: #1e293b; }
+            .box { border: 4px solid #30496d; border-radius: 20px; padding: 30px; max-width: 520px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+            h1 { color: #30496d; margin: 10px 0 4px; font-size: 26px; }
+            .sub { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+            .qr-wrap { background: #f8fafc; padding: 20px; border-radius: 16px; display: inline-block; border: 2px solid #e2e8f0; margin-bottom: 20px; }
+            .qr-wrap img { width: 280px; height: 280px; display: block; }
+            .pin-wrap { background: #0f172a; color: white; border-radius: 14px; padding: 16px; margin: 10px 0 20px; }
+            .pin-code { font-size: 56px; font-weight: 900; color: #38bdf8; font-family: monospace; letter-spacing: 0.15em; line-height: 1; }
+            .inst { font-size: 14px; color: #334155; line-height: 1.6; }
+            @media print { button { display: none; } body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <div style="font-size: 42px;">🏢</div>
+            <h1>ONIX CAFETERIA SERVING DESK</h1>
+            <div class="sub">${todayFormatted}</div>
+            
+            <div class="qr-wrap">
+              <img src="${dailyCode.qrUrl}" alt="Counter QR">
+            </div>
+
+            <div class="pin-wrap">
+              <div style="font-size: 13px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px;">Today's 4-Digit Counter PIN</div>
+              <div class="pin-code">${dailyCode.pin}</div>
+            </div>
+
+            <div class="inst">
+              <strong>Instructions for Employees:</strong><br>
+              1. Open your <strong>Digital Meal Pass</strong> on your phone.<br>
+              2. Tap <strong>Scan Counter QR</strong> or enter PIN <strong>${dailyCode.pin}</strong>.<br>
+              3. Show your verified <strong>"TAKE YOUR LUNCH PLATE"</strong> screen to cafeteria staff.
+            </div>
+            
+            <div style="margin-top: 30px;">
+              <button onclick="window.print()" style="background: #30496d; color: white; border: none; padding: 10px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;">Print Standee</button>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    }
+
+    // ==========================================
     // STANDARDIZED MEAL PASS QR & DIGITAL PASS
     // ==========================================
     function renderMealPass() {
@@ -2314,7 +2823,7 @@
           <div style="text-align:center; padding:30px; background:#f8fafc; border-radius:12px; border:1px dashed #cbd5e1;">
             <p style="font-size:2rem; margin-bottom:8px;">🍱</p>
             <p style="font-weight:700; color:var(--primary); margin-bottom:4px;">No Active Meal Booking</p>
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;">Book lunch for tomorrow or the week to get your digital pass & token.</p>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;">Book lunch for today or tomorrow to get your digital pass & token.</p>
             <button class="btn btn-primary" style="width:auto; margin:0 auto; padding:8px 18px;" onclick="switchEmpTab('booking')">
               Book Lunch Now
             </button>
@@ -2328,7 +2837,59 @@
       const badgeText = isVeg ? '🟢 VEG MEAL' : '🔴 NON-VEG MEAL';
       const isServed = pass.status && pass.status.includes('Served');
 
-      // Standardized high-contrast crisp QR code containing tokenCode
+      // 1. IF SERVED: DISPLAY VERIFIED CONFIRMATION SCREEN
+      if (isServed) {
+        container.innerHTML = `
+          <div class="meal-pass-card" style="background: linear-gradient(135deg, #064e3b 0%, #047857 100%); border: 3px solid #34d399; box-shadow: 0 10px 30px rgba(16,185,129,0.35); text-align:center; padding:24px 18px;">
+            <div style="font-size:3.5rem; line-height:1; margin-bottom:6px;">🍽️</div>
+            <div style="margin-bottom:10px;">
+              <span style="background:#10b981; color:white; font-size:0.85rem; font-weight:800; padding:6px 18px; border-radius:20px; display:inline-block; letter-spacing:0.04em;">
+                ✅ ATTENDANCE MARKED & VERIFIED
+              </span>
+            </div>
+            <h2 style="font-size:1.6rem; font-weight:900; color:#ecfdf5; margin:0 0 6px 0; letter-spacing:0.02em;">
+              TAKE YOUR LUNCH PLATE
+            </h2>
+            <p style="font-size:0.82rem; color:#a7f3d0; margin-bottom:16px;">
+              Show this verified screen to cafeteria staff at the counter
+            </p>
+
+            <div style="background:#0f172a; border:2px solid #334155; border-radius:12px; padding:14px; margin-bottom:14px;">
+              <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em;">Verified Serial Token</div>
+              <div style="font-size:3.5rem; font-weight:900; color:#38bdf8; font-family:monospace; line-height:1.1;">${pass.tokenCode}</div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.12); border-radius:12px; padding:12px 16px; font-size:0.85rem; line-height:1.6; color:white; text-align:left;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:#cbd5e1;">Employee:</span>
+                <span style="font-weight:700;">${pass.name} (${pass.empId})</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:#cbd5e1;">Date:</span>
+                <span style="font-weight:700;">${pass.dateDisplay || pass.date}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:#cbd5e1;">Meal Preference:</span>
+                <span style="font-weight:800; color:${isVeg ? '#86efac' : '#fca5a5'};">${pass.mealType.toUpperCase()}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:#cbd5e1;">Verified At:</span>
+                <span style="font-weight:700;">${pass.servedAt || 'Today'}</span>
+              </div>
+              ${pass.isUnplanned ? '<div style="display:flex; justify-content:space-between; color:#fde68a;"><span>Registration:</span><strong>⚡ Emergency Same-Day</strong></div>' : ''}
+            </div>
+
+            <div style="margin-top:16px;">
+              <span style="background:rgba(0,0,0,0.3); color:#86efac; padding:4px 12px; border-radius:12px; font-size:0.75rem; font-weight:700;">
+                ✓ Verified in Cafeteria Attendance Sheet
+              </span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 2. IF NOT SERVED: DISPLAY ACTIVE PASS + COUNTER VERIFICATION BOX
       const qrToken = pass.tokenCode || 'A01';
       const encodedPayload = encodeURIComponent(qrToken);
       const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodedPayload}`;
@@ -2354,25 +2915,204 @@
           <div style="background:#0f172a; border:2px solid #334155; border-radius:12px; padding:14px; text-align:center; margin:12px 0;">
             <p style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:2px;">Your Lunch Serial Token</p>
             <div style="font-size:3.4rem; font-weight:900; color:#38bdf8; font-family:monospace; letter-spacing:0.06em; line-height:1.1;">${pass.tokenCode}</div>
-            <p style="font-size:0.72rem; color:#cbd5e1; margin-top:4px;">Tell vendor "<strong>${pass.tokenCode}</strong>" or scan QR below</p>
+            <p style="font-size:0.72rem; color:#cbd5e1; margin-top:4px;">Scan counter QR below or tell vendor "<strong>${pass.tokenCode}</strong>"</p>
           </div>
 
-          <!-- Standardized Scannable Meal Pass QR Code -->
-          <div style="background:white; border-radius:12px; padding:14px; text-align:center; margin:14px 0; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-            <img src="${qrImgUrl}" alt="Meal Pass QR" style="width:190px; height:190px; object-fit:contain; border-radius:6px;">
-            <p style="color:#30496d; font-size:0.75rem; font-weight:700; margin-top:6px;">Vendor Scans this QR at Serving Line</p>
+          <!-- REVERSE SERVING SELF-VERIFICATION BOX -->
+          <div style="background:#f0fdf4; border:2px solid #059669; border-radius:12px; padding:16px; text-align:center; margin:14px 0;">
+            <h4 style="color:#065f46; font-size:1rem; margin:0 0 6px 0;">🍽️ Collect Lunch at Counter</h4>
+            <p style="font-size:0.8rem; color:#047857; margin:0 0 12px 0;">
+              Scan the Counter Serving QR or enter the 4-Digit Counter PIN displayed at the desk:
+            </p>
+
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;">
+              <button type="button" class="btn" onclick="openEmployeeCounterScanner()" style="background:#059669; color:white; font-weight:700; font-size:0.88rem; padding:10px 18px; width:auto; border-radius:8px; border:none; cursor:pointer;">
+                📷 Scan Counter QR Code
+              </button>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+              <span style="font-size:0.8rem; font-weight:700; color:#334155;">Or Enter Counter PIN:</span>
+              <input type="text" id="emp-counter-pin-input" placeholder="PIN" maxlength="4" style="width:85px; text-align:center; font-size:1.15rem; font-weight:800; padding:6px; border:2px solid #059669; border-radius:8px; font-family:monospace;" onkeypress="if(event.key==='Enter') verifyEmployeeCounterPin()">
+              <button type="button" class="btn" onclick="verifyEmployeeCounterPin()" style="width:auto; padding:8px 14px; font-size:0.82rem; background:#047857; color:white; font-weight:700; border-radius:8px; border:none; cursor:pointer;">
+                Verify & Collect
+              </button>
+            </div>
           </div>
 
-          <!-- Live Serving Status Badge -->
+          <!-- Backup QR Code -->
+          <div style="background:white; border-radius:12px; padding:12px; text-align:center; margin:14px 0; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+            <p style="color:#64748b; font-size:0.72rem; font-weight:600; margin-bottom:6px;">Backup Token QR</p>
+            <img src="${qrImgUrl}" alt="Meal Pass QR" style="width:130px; height:130px; object-fit:contain; border-radius:6px; margin:0 auto; display:block;">
+          </div>
+
+          <!-- Ready Status Badge -->
           <div style="text-align:center; margin-top:10px;">
-            <span style="display:inline-block; padding:6px 16px; border-radius:20px; font-weight:800; font-size:0.82rem; background:${isServed ? '#10b981' : '#f59e0b'}; color:white;">
-              ${isServed ? `✅ FOOD SERVED (${pass.servedAt || 'Today'})` : '🟡 READY TO SCAN / COLLECT'}
+            <span style="display:inline-block; padding:6px 16px; border-radius:20px; font-weight:800; font-size:0.82rem; background:#f59e0b; color:white;">
+              🟡 READY TO COLLECT LUNCH
             </span>
           </div>
         </div>
       `;
 
       container.innerHTML = passHtml;
+    }
+
+    // ==========================================
+    // REVERSE SERVING VERIFICATION FUNCTIONS
+    // ==========================================
+    function verifyEmployeeCounterPin() {
+      const pinInput = document.getElementById('emp-counter-pin-input');
+      const enteredPin = pinInput ? pinInput.value.trim() : '';
+      const dailyCode = getDailyCounterCode();
+      if (!enteredPin) {
+        showToast("Please enter the 4-digit Counter PIN", "⚠️");
+        return;
+      }
+      if (enteredPin === dailyCode.pin) {
+        markMyMealServed();
+      } else {
+        playBeepSound('warn');
+        showToast("Incorrect Counter PIN! Please check the standee.", "❌");
+      }
+    }
+
+    function markMyMealServed() {
+      const pass = appState.activeUserPass || (appState.bookings.length > 0 ? appState.bookings[0] : null);
+      if (!pass) {
+        showToast("No active booking found to serve!", "⚠️");
+        return;
+      }
+
+      if (pass.status && pass.status.includes('Served')) {
+        showToast("Meal already marked as Served!", "ℹ️");
+        renderMealPass();
+        return;
+      }
+
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      pass.status = 'Served ✅';
+      pass.servedAt = timeStr;
+      pass.servedDate = todayStr;
+
+      // Update in appState.bookings
+      const bookingIdx = appState.bookings.findIndex(b => b.id === pass.id || b.tokenCode === pass.tokenCode);
+      if (bookingIdx > -1) {
+        appState.bookings[bookingIdx] = pass;
+      }
+      localStorage.setItem('onix_bookings', JSON.stringify(appState.bookings));
+      appState.activeUserPass = pass;
+      localStorage.setItem('onix_active_pass', JSON.stringify(pass));
+
+      // Sync to Google Sheet
+      try {
+        syncToGoogleSheet({
+          action: 'serve',
+          tokenCode: pass.tokenCode,
+          empId: pass.empId,
+          email: pass.email || '',
+          name: pass.name,
+          date: pass.dateDisplay || pass.date,
+          servedAt: timeStr
+        });
+      } catch(err) {
+        console.warn("Sheet serve sync error:", err);
+      }
+
+      playBeepSound('success');
+      showToast("Attendance Marked! Take your plate.", "🎉");
+      renderMealPass();
+      renderVendorLiveQueue();
+      updateVendorServedSummary();
+    }
+
+    let empCameraStream = null;
+    let empCameraAnimId = null;
+
+    function openEmployeeCounterScanner() {
+      const modal = document.getElementById('emp-counter-scanner-modal');
+      const video = document.getElementById('emp-camera-video-preview');
+      const statusText = document.getElementById('emp-scan-status-text');
+      if (!modal || !video) return;
+
+      modal.style.display = 'flex';
+      if (statusText) statusText.textContent = "Requesting camera access...";
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => {
+          empCameraStream = stream;
+          video.srcObject = stream;
+          video.setAttribute("playsinline", true);
+          video.play();
+          if (statusText) statusText.textContent = "Scanning counter QR code...";
+          empCameraAnimId = requestAnimationFrame(scanEmpCameraFrame);
+        })
+        .catch(err => {
+          console.error("Camera access error:", err);
+          if (statusText) statusText.textContent = "Camera access denied. Please enter 4-digit PIN instead.";
+          showToast("Camera access denied. Please enter 4-digit PIN.", "⚠️");
+        });
+    }
+
+    function closeEmployeeCounterScanner() {
+      const modal = document.getElementById('emp-counter-scanner-modal');
+      if (modal) modal.style.display = 'none';
+      if (empCameraStream) {
+        empCameraStream.getTracks().forEach(track => track.stop());
+        empCameraStream = null;
+      }
+      if (empCameraAnimId) {
+        cancelAnimationFrame(empCameraAnimId);
+        empCameraAnimId = null;
+      }
+    }
+
+    function scanEmpCameraFrame() {
+      const video = document.getElementById('emp-camera-video-preview');
+      if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        empCameraAnimId = requestAnimationFrame(scanEmpCameraFrame);
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      if (window.jsQR) {
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert"
+        });
+
+        if (code && code.data) {
+          const raw = code.data.trim();
+          const dailyCode = getDailyCounterCode();
+          let isValid = false;
+
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.action === 'counter_serve' && parsed.pin === dailyCode.pin) {
+              isValid = true;
+            }
+          } catch(e) {
+            if (raw === dailyCode.pin || raw.includes(dailyCode.pin)) {
+              isValid = true;
+            }
+          }
+
+          if (isValid) {
+            closeEmployeeCounterScanner();
+            markMyMealServed();
+            return;
+          }
+        }
+      }
+
+      empCameraAnimId = requestAnimationFrame(scanEmpCameraFrame);
     }
 
     // ==========================================
@@ -2423,15 +3163,26 @@
       const feedbackBanner = document.getElementById('scan-feedback-banner');
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // Match in bookings: First priority is today's bookings
+      // Match in bookings: Prioritize UN-SERVED bookings first
       let match = appState.bookings.find(b => 
-        (b.date === todayStr || b.servedDate === todayStr) &&
+        (b.date === todayStr || b.servedDate === todayStr || !b.servedDate) &&
         ((b.tokenCode && b.tokenCode.toUpperCase() === val) ||
          (b.empId && b.empId.toUpperCase() === val) ||
-         (b.email && b.email.toUpperCase() === val))
+         (b.email && b.email.toUpperCase() === val)) &&
+        (!b.status || !b.status.includes('Served'))
       );
 
-      // If not found in today, check any date
+      // If no unserved found for today, check unserved across all dates
+      if (!match) {
+        match = appState.bookings.find(b => 
+          ((b.tokenCode && b.tokenCode.toUpperCase() === val) ||
+           (b.empId && b.empId.toUpperCase() === val) ||
+           (b.email && b.email.toUpperCase() === val)) &&
+          (!b.status || !b.status.includes('Served'))
+        );
+      }
+
+      // If still not found, check if already served match exists
       if (!match) {
         match = appState.bookings.find(b => 
           (b.tokenCode && b.tokenCode.toUpperCase() === val) ||
@@ -2472,8 +3223,8 @@
             empId: match.empId,
             email: match.email || '',
             name: match.name,
-            servedAt: timeStr,
-            date: match.date
+            date: match.dateDisplay || match.date,
+            servedAt: timeStr
           });
 
           playBeepSound('success');
@@ -2876,9 +3627,19 @@
         localStorage.setItem('onix_auth_name', derivedName);
         localStorage.setItem('onix_auth_empid', derivedEmpId);
       }
+
+      // Pre-fill mandatory employee name and ID fields
+      try {
+        const nameInput = document.getElementById('booking-emp-name');
+        const idInput = document.getElementById('booking-emp-id');
+        const savedName = localStorage.getItem('onix_auth_name') || '';
+        const savedId = localStorage.getItem('onix_auth_empid') || '';
+        if (nameInput && !nameInput.value && savedName) nameInput.value = savedName;
+        if (idInput && !idInput.value && savedId) idInput.value = savedId;
+      } catch(e) {}
     }
 
-    // Sequential Daily Token & Booking Submission
+    // High-Concurrency Sequential Daily Token & Booking Submission
     function handleBookingSubmit(e) {
       if (e && e.preventDefault) e.preventDefault();
       cleanJunkTestData();
@@ -2886,44 +3647,46 @@
       const mealTypeEl = document.getElementById('selected-meal-type');
       const submitBtn = document.getElementById('btn-submit-booking');
       const mealType = mealTypeEl ? mealTypeEl.value : 'veg';
+      const isAdHoc = (activeBookingPeriod === 'unplanned');
 
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlEmail = urlParams.get('email') || '';
-      const urlId = urlParams.get('id') || urlParams.get('empid') || '';
-      const urlName = urlParams.get('name') || '';
+      let empId = '';
+      let email = '';
+      let name = '';
 
-      const junkWords = ['cvbnm', 'asdf', 'qwerty', 'zxcv', 'test', 'demo', '1234'];
-      const isJunkStr = (val) => {
-        if (!val) return false;
-        const v = String(val).toLowerCase().trim();
-        return junkWords.some(j => v === j || v === j + '@onix.com' || v.startsWith(j + '@'));
-      };
+      if (isAdHoc) {
+        // Enforce Emp ID & Email ONLY for Ad-Hoc Same-Day Booking
+        const idInput = document.getElementById('booking-emp-id');
+        const emailInput = document.getElementById('booking-emp-email');
+        const enteredId = idInput ? idInput.value.trim().toUpperCase() : '';
+        const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
-      let rawSavedEmail = localStorage.getItem('onix_auth_email') || localStorage.getItem('onix_saved_email') || '';
-      if (isJunkStr(rawSavedEmail)) rawSavedEmail = '';
+        if (!enteredId || enteredId.length < 2) {
+          showToast("Please enter your Employee ID for Ad-Hoc booking", "⚠️");
+          if (idInput) idInput.focus();
+          return;
+        }
 
-      let email = urlEmail || rawSavedEmail;
-      if (!email || !email.includes('@') || isJunkStr(email)) {
-        email = 'onix.staff@onixnet.com';
-      } else {
-        email = email.trim().toLowerCase();
-        try { localStorage.setItem('onix_auth_email', email); } catch(err) {}
-      }
+        if (!enteredEmail || !enteredEmail.includes('@') || enteredEmail.length < 5) {
+          showToast("Please enter your Official Onix Email ID", "⚠️");
+          if (emailInput) emailInput.focus();
+          return;
+        }
 
-      let rawSavedId = localStorage.getItem('onix_auth_empid') || localStorage.getItem('onix_saved_empid') || '';
-      if (isJunkStr(rawSavedId)) rawSavedId = '';
-
-      let empId = urlId || rawSavedId;
-      if (!empId || isJunkStr(empId)) {
-        empId = email.split('@')[0].toUpperCase();
-      }
-
-      let rawSavedName = localStorage.getItem('onix_auth_name') || localStorage.getItem('onix_saved_name') || '';
-      if (isJunkStr(rawSavedName)) rawSavedName = '';
-
-      let name = urlName || rawSavedName;
-      if (!name || isJunkStr(name)) {
+        empId = enteredId;
+        email = enteredEmail;
         name = email.split('@')[0].replace('.', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+
+        try {
+          localStorage.setItem('onix_auth_empid', empId);
+          localStorage.setItem('onix_auth_email', email);
+          localStorage.setItem('onix_auth_name', name);
+        } catch(err) {}
+      } else {
+        // Regular Advance Booking (Zero friction for 500+ employees)
+        const urlParams = new URLSearchParams(window.location.search);
+        email = urlParams.get('email') || localStorage.getItem('onix_auth_email') || 'onix.staff@onixnet.com';
+        empId = urlParams.get('id') || urlParams.get('empid') || localStorage.getItem('onix_auth_empid') || email.split('@')[0].toUpperCase();
+        name = urlParams.get('name') || localStorage.getItem('onix_auth_name') || email.split('@')[0].replace('.', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
       }
 
       if (!selectedWorkingDates || selectedWorkingDates.length === 0) {
@@ -2954,11 +3717,18 @@
 
       selectedWorkingDates.forEach((dateObj, idx) => {
         // Daily Sequential Token calculation: A01, A02, A19, A37...
-        const existingForDate = appState.bookings.filter(b => b.date === dateObj.iso);
+        const existingForDate = appState.bookings.filter(b => 
+          b.date === dateObj.iso || 
+          b.date === dateObj.fullDisplay || 
+          b.dateDisplay === dateObj.fullDisplay ||
+          (b.dateDisplay && dateObj.display && b.dateDisplay.includes(dateObj.display)) ||
+          (b.date && dateObj.iso && b.date.includes(dateObj.iso))
+        );
         const serialNum = existingForDate.length + 1;
         const numStr = serialNum < 10 ? '0' + serialNum : '' + serialNum;
         const tokenCode = `A${numStr}`;
 
+        const isUnplannedBooking = (activeBookingPeriod === 'unplanned');
         const booking = {
           id: 'BK-' + (Date.now() + idx),
           date: dateObj.iso,
@@ -2968,7 +3738,8 @@
           email: email,
           mealType: mealType,
           tokenCode: tokenCode,
-          status: 'Confirmed',
+          status: isUnplannedBooking ? 'Confirmed (Unplanned)' : 'Confirmed',
+          isUnplanned: isUnplannedBooking,
           servedAt: '',
           servedDate: '',
           timestamp: new Date().toLocaleTimeString()
@@ -3095,6 +3866,7 @@
 
     function renderWeeklyMenu() {
       const container = document.getElementById('menu-cards-container');
+      if (!container) return;
       const menuData = (appState.currentWeekView === 'this') ? appState.menuCurrent : appState.menuNext;
 
       const now = new Date();
@@ -3224,6 +3996,7 @@
       renderVendorMenuEditor();
       renderVendorFeedbackList();
       renderVendorLiveQueue();
+      renderVendorCounterDisplay();
       filterServedData('today');
     }
 
@@ -3349,31 +4122,158 @@
       }
     }
 
+    function populateFeedbackMonthDropdown(selectId) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      const monthsSet = new Set();
+      appState.feedbacks.forEach(fb => {
+        if (fb.date) {
+          const parts = fb.date.split('-');
+          if (parts.length >= 2) {
+            monthsSet.add(`${parts[0]}-${parts[1]}`);
+          }
+        }
+      });
+      const currentSelected = select.value || 'all';
+      let html = '<option value="all">All Months</option>';
+      const sortedMonths = Array.from(monthsSet).sort().reverse();
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      sortedMonths.forEach(mStr => {
+        const [y, m] = mStr.split('-');
+        const label = `${monthNames[parseInt(m, 10) - 1]} ${y}`;
+        html += `<option value="${mStr}">${label}</option>`;
+      });
+      select.innerHTML = html;
+      select.value = currentSelected;
+    }
+
     function renderVendorFeedbackList() {
+      populateFeedbackMonthDropdown('vendor-feedback-month-filter');
       const container = document.getElementById('vendor-feedback-list');
-      if (appState.feedbacks.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">No employee feedback submitted yet.</p>';
+      const filterEl = document.getElementById('vendor-feedback-month-filter');
+      const selectedMonth = filterEl ? filterEl.value : 'all';
+      
+      let list = appState.feedbacks;
+      if (selectedMonth !== 'all') {
+        list = list.filter(fb => fb.date && fb.date.startsWith(selectedMonth));
+      }
+
+      const totalEl = document.getElementById('vendor-fb-total-count');
+      const avgEl = document.getElementById('vendor-fb-avg-rating');
+      if (totalEl) totalEl.textContent = list.length;
+      if (avgEl) {
+        const avg = list.length > 0 ? (list.reduce((acc, f) => acc + (f.stars || 0), 0) / list.length).toFixed(1) : '0';
+        avgEl.textContent = `${avg} ★`;
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; padding:10px 0;">No employee feedback found for selected month.</p>';
         return;
       }
 
       let html = '';
-      appState.feedbacks.slice(0, 10).forEach(fb => {
+      list.forEach(fb => {
         html += `
           <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <strong style="font-size:0.85rem; color:var(--primary);">${fb.name}</strong>
               <span style="color:#f59e0b; font-size:0.85rem;">${'★'.repeat(fb.stars)}</span>
             </div>
-            <p style="font-size:0.82rem; color:var(--text);">${fb.comment}</p>
+            <p style="font-size:0.82rem; color:var(--text); margin:4px 0;">${fb.comment || 'No comment provided'}</p>
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
-              ${fb.tags.map(t => `<span style="font-size:0.7rem; background:#e2e8f0; padding:2px 8px; border-radius:10px;">${t}</span>`).join('')}
+              ${(fb.tags || []).map(t => `<span style="font-size:0.7rem; background:#e2e8f0; padding:2px 8px; border-radius:10px;">${t}</span>`).join('')}
             </div>
-            <p style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">${fb.date} at ${fb.time}</p>
+            <p style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">${fb.date} at ${fb.time || ''}</p>
           </div>
         `;
       });
-
       container.innerHTML = html;
+    }
+
+    function renderCommitteeFeedbackList() {
+      populateFeedbackMonthDropdown('committee-feedback-month-filter');
+      const container = document.getElementById('committee-feedback-list');
+      const filterEl = document.getElementById('committee-feedback-month-filter');
+      const selectedMonth = filterEl ? filterEl.value : 'all';
+
+      let list = appState.feedbacks;
+      if (selectedMonth !== 'all') {
+        list = list.filter(fb => fb.date && fb.date.startsWith(selectedMonth));
+      }
+
+      const totalEl = document.getElementById('committee-fb-total-count');
+      const avgEl = document.getElementById('committee-fb-avg-rating');
+      if (totalEl) totalEl.textContent = list.length;
+      if (avgEl) {
+        const avg = list.length > 0 ? (list.reduce((acc, f) => acc + (f.stars || 0), 0) / list.length).toFixed(1) : '0';
+        avgEl.textContent = `${avg} ★`;
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; padding:10px 0;">No employee feedback found for selected month.</p>';
+        return;
+      }
+
+      let html = '';
+      list.forEach(fb => {
+        html += `
+          <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:12px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <strong style="font-size:0.85rem; color:#30496d;">${fb.name}</strong>
+              <span style="color:#f59e0b; font-size:0.85rem; font-weight:700;">${'★'.repeat(fb.stars)} (${fb.stars} Stars)</span>
+            </div>
+            <p style="font-size:0.82rem; color:#334155; margin:4px 0;">${fb.comment || 'No comment provided'}</p>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+              ${(fb.tags || []).map(t => `<span style="font-size:0.7rem; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px; font-weight:600;">${t}</span>`).join('')}
+            </div>
+            <p style="font-size:0.7rem; color:#64748b; margin-top:4px;">${fb.date} &bull; ${fb.time || ''}</p>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function exportMonthlyFeedbackCsv(context) {
+      const selectId = (context === 'vendor') ? 'vendor-feedback-month-filter' : 'committee-feedback-month-filter';
+      const filterEl = document.getElementById(selectId);
+      const selectedMonth = filterEl ? filterEl.value : 'all';
+
+      let list = appState.feedbacks || [];
+      if (selectedMonth !== 'all') {
+        list = list.filter(fb => fb.date && fb.date.startsWith(selectedMonth));
+      }
+
+      if (list.length === 0) {
+        showToast("No feedback entries available to export!", "⚠️");
+        return;
+      }
+
+let csvContent = "\uFEFF"; // UTF-8 BOM for Microsoft Excel
+      csvContent += "Date,Time,Employee Name,Star Rating,Categories,Dish Comments\r\n";
+
+      list.forEach(fb => {
+        const clean = str => `"${(str || '').toString().replace(/"/g, '""')}"`;
+        const tags = Array.isArray(fb.tags) ? fb.tags.join("; ") : (fb.tags || "");
+        csvContent += [
+          clean(fb.date),
+          clean(fb.time || ''),
+          clean(fb.name),
+          clean(fb.stars + " Stars"),
+          clean(tags),
+          clean(fb.comment)
+        ].join(",") + "\r\n";
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const filename = `Onix_Cafeteria_Feedback_${selectedMonth}.csv`;
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(`Downloaded Feedback Report (${list.length} rows)`, "📥");
     }
 
     // ==========================================
@@ -3526,8 +4426,19 @@
 
       setEl('committee-today-served-count', `${todayServed} / ${todayBooked}`);
       setEl('committee-today-veg-nonveg', `Veg: ${todayVeg} | Non-Veg: ${todayNonVeg}`);
+      // Calculate Unplanned Today
+      let todayUnplanned = 0;
+      bookings.forEach(b => {
+        if (b.isUnplanned || (b.status && b.status.includes('Unplanned'))) {
+          if (b.date === todayStr || b.servedDate === todayStr || (b.dateDisplay && b.dateDisplay.includes(new Date().getDate().toString()))) {
+            todayUnplanned++;
+          }
+        }
+      });
+
       setEl('committee-month-served-count', `${monthServed} / ${monthBooked}`);
       setEl('committee-month-veg-nonveg', `Veg: ${monthVeg} | Non-Veg: ${monthNonVeg}`);
+      setEl('committee-unplanned-count', todayUnplanned);
 
       // 1. Week-wise Ledger
       renderCommitteeWeekLedger(bookings);
@@ -3535,7 +4446,10 @@
       // 2. Month-wise Ledger
       renderCommitteeMonthLedger(bookings);
 
-      // 3. Collapsible detailed individual employee audit log
+      // 3. Monthly Feedback List
+      renderCommitteeFeedbackList();
+
+      // 4. Collapsible detailed individual employee audit log
       const tbody = document.getElementById('admin-bookings-tbody');
       if (tbody) {
         if (bookings.length === 0) {
@@ -3546,17 +4460,19 @@
             const isVeg = b.mealType === 'veg';
             const color = isVeg ? 'var(--veg)' : 'var(--accent)';
             const isServed = b.status && b.status.includes('Served');
+            const isUnpl = b.isUnplanned || (b.status && b.status.includes('Unplanned'));
+            const unplBadge = isUnpl ? `<span style="background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:6px; font-size:0.68rem; font-weight:800; margin-left:4px;">⚡ UNPLANNED</span>` : '';
             const email = b.email || '';
             html += `
               <tr>
                 <td>${b.dateDisplay || b.date}</td>
-                <td><strong>${b.name || '—'}</strong></td>
+                <td><strong>${b.name || '—'}</strong>${unplBadge}</td>
                 <td>${b.empId || ''}${email ? ` <span style="color:#64748b; font-size:0.75rem;">(${email})</span>` : ''}</td>
                 <td><span style="color:${color}; font-weight:700;">${(b.mealType || '').toUpperCase()}</span></td>
                 <td><code>${b.tokenCode || ''}</code></td>
                 <td>
                   <span style="font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:700; background:${isServed ? '#dcfce7' : '#fef3c7'}; color:${isServed ? '#15803d' : '#92400e'};">
-                    ${isServed ? `Served ✅ ${b.servedAt || ''}` : 'Confirmed'}
+                    ${isServed ? `Served ✅ ${b.servedAt || ''}` : (isUnpl ? 'Confirmed (Unplanned)' : 'Confirmed')}
                   </span>
                 </td>
               </tr>
@@ -3700,6 +4616,7 @@
     const savedGasUrl = getActiveGasUrl();
     const gasInput = document.getElementById('gas-webhook-url');
     if (gasInput && savedGasUrl) gasInput.value = savedGasUrl;
+    syncLiveBookingsFromGoogleSheet(true);
   </script>
 
   <!-- Standalone Poster Template (Never 404s!) -->
@@ -3707,6 +4624,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      console.error("DOM JSERROR:", msg, "line:", line);
+      window.__lastJsError = { msg: msg, line: line, col: col };
+    };
+  </script>
   <meta charset="UTF-8">
   <title>Onix Cafeteria | Printable Daily Lunch Poster</title>
   <style>
