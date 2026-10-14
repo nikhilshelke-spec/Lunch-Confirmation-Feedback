@@ -91,16 +91,21 @@
     }
 
     .brand-text h1 {
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
       line-height: 1.2;
+      color: #ffffff !important;
+      margin: 0;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
     }
 
     .brand-text p {
-      font-size: 0.72rem;
-      color: #cbd5e1;
-      font-weight: 400;
+      font-size: 0.75rem;
+      color: #e2e8f0 !important;
+      font-weight: 500;
+      margin: 0;
+      opacity: 0.95;
     }
 
     .role-switch-btn {
@@ -832,8 +837,8 @@
       <div class="brand-wrap">
         <img src="data:image/png;base64,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" alt="Onix" class="brand-logo-img">
         <div class="brand-text">
-          <h1>Onix Cafeteria</h1>
-          <p>Lunch Booking & Menu System</p>
+          <h1 style="color:#ffffff !important; font-weight:800; margin:0; font-size:1.15rem;">Onix Cafeteria</h1>
+          <p style="color:#e2e8f0 !important; font-size:0.75rem; margin:0; font-weight:500;">Lunch Booking & Menu System</p>
         </div>
       </div>
       <div>
@@ -937,8 +942,8 @@
                 </div>
                 <div class="meal-radio-card" id="period-unplanned" onclick="selectBookingPeriod('unplanned')" style="padding:10px 6px; border:1.5px dashed #0284c7; background:#f0f9ff;">
                   <span style="font-size:1.1rem; display:block;">⚡</span>
-                  <span style="font-size:0.8rem; font-weight:700; display:block; color:#0369a1;">Same-Day Ad-Hoc</span>
-                  <span style="font-size:0.68rem; color:#0284c7; display:block;">Spot Meal Request</span>
+                  <span style="font-size:0.8rem; font-weight:700; display:block; color:#0369a1;">Same-Day Booking</span>
+                  <span style="font-size:0.68rem; color:#0284c7; display:block;">Today's Lunch Only</span>
                 </div>
               </div>
 
@@ -1002,15 +1007,15 @@
 
 
 
-            <!-- Conditional Ad-Hoc Spot Registration Details (Visible ONLY for Same-Day Ad-Hoc) -->
+            <!-- Conditional Same-Day Registration Details (Visible ONLY for Same-Day Ad-Hoc) -->
             <div id="adhoc-credentials-container" style="display:none; background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:10px; padding:14px; margin-bottom:16px;">
               <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
                 <span style="font-size:1rem;">🆔</span>
-                <strong style="color:#0369a1; font-size:0.85rem;">Ad-Hoc Spot Registration Details</strong>
-                <span style="font-size:0.7rem; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:auto;">Required for Ad-Hoc</span>
+                <strong style="color:#0369a1; font-size:0.85rem;">Same-Day Registration Details</strong>
+                <span style="font-size:0.7rem; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:auto;">Required for Today</span>
               </div>
               <p style="font-size:0.75rem; color:#0284c7; margin:0 0 10px 0;">
-                Please provide your Employee ID and Official Email for ad-hoc cafeteria accounting:
+                Please provide your Employee ID and Official Email for same-day meal allocation:
               </p>
               
               <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
@@ -1058,10 +1063,10 @@
             <span style="font-size:1.4rem;">⚡</span>
             <div style="flex:1;">
               <strong style="color:#0369a1;">Missed yesterday's advance lunch cutoff?</strong><br>
-              <span style="font-size:0.8rem; color:#0284c7;">Register now for Same-Day Ad-Hoc Spot Lunch.</span>
+              <span style="font-size:0.8rem; color:#0284c7;">Register now for Same-Day Lunch Booking.</span>
             </div>
             <button type="button" class="btn" onclick="selectBookingPeriod('unplanned')" style="width:auto; padding:8px 14px; font-size:0.8rem; background:#0284c7; color:white; font-weight:700; border-radius:8px; border:none; cursor:pointer;">
-              Same-Day Ad-Hoc &rarr;
+              Same-Day Booking &rarr;
             </button>
           </div>
         </div>
@@ -1473,7 +1478,7 @@
           </div>
           <div class="metric-card" style="border-top: 4px solid #f59e0b;">
             <div class="metric-val" id="committee-unplanned-count" style="color:#b45309;">0</div>
-            <div class="metric-label">⚡ Unplanned Emergency</div>
+            <div class="metric-label">⚡ Same-Day Bookings</div>
             <div style="font-size:0.72rem; color:#78350f; margin-top:2px;">Same-Day Registered</div>
           </div>
         </div>
@@ -1762,7 +1767,7 @@
       <button class="modal-close" onclick="closeUnplannedAdvisory(false)">&times;</button>
       <div style="text-align:center; font-size:2.4rem; margin-bottom:8px;">🏢</div>
       <h3 style="font-size:1.15rem; font-weight:800; color:#0369a1; text-align:center; margin-bottom:8px;">
-        Ad-Hoc Same-Day Meal Registration Policy
+        Same-Day Meal Booking Guidelines
       </h3>
       <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:14px; font-size:0.84rem; color:#0369a1; line-height:1.5; margin-bottom:14px;">
         <p style="margin:0 0 8px 0; font-weight:700;">
@@ -1777,7 +1782,7 @@
       </div>
       <label style="display:flex; align-items:flex-start; gap:10px; font-size:0.82rem; color:#334155; margin-bottom:16px; cursor:pointer;">
         <input type="checkbox" id="unplanned-agree-check" style="margin-top:3px; transform:scale(1.2);">
-        <span>I acknowledge the kitchen forecasting impact and request an ad-hoc meal for today.</span>
+        <span>I understand and request a same-day lunch booking for today.</span>
       </label>
       <div style="display:flex; gap:10px;">
         <button type="button" class="btn btn-outline" onclick="closeUnplannedAdvisory(false)" style="flex:1;">Cancel</button>
@@ -1938,7 +1943,7 @@
         const targetDateEl = document.getElementById('booking-target-date-text');
         if (targetDateEl) {
           targetDateEl.textContent = (activeBookingPeriod === 'unplanned')
-            ? `Ad-Hoc Spot Registration for Today: ${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`
+            ? `Same-Day Registration for Today: ${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`
             : `Advance Booking for Tomorrow: ${tomorrowFormatted}`;
         }
 
@@ -2567,7 +2572,7 @@
 
       calculateSelectedDates();
       updateClockAndCutoff();
-      showToast("Same-Day Ad-Hoc Booking enabled for Today", "⚡");
+      showToast("Same-Day Booking enabled for Today", "⚡");
     }
 
     function selectBookingPeriod(period) {
@@ -2689,7 +2694,7 @@
         } else {
           submitBtn.disabled = false;
           submitBtn.innerHTML = (activeBookingPeriod === 'unplanned')
-            ? `<span>⚡ Confirm Same-Day Ad-Hoc (${dates[0].display})</span>`
+            ? `<span>⚡ Confirm Same-Day Lunch (${dates[0].display})</span>`
             : (activeBookingPeriod === 'tomorrow')
             ? `<span>✅ Confirm Tomorrow's Booking (${dates[0].display})</span>`
             : (activeBookingPeriod === 'custom' && dates.length === 1)
@@ -2754,60 +2759,49 @@
     function printCounterStandee() {
       const dailyCode = getDailyCounterCode();
       const printWin = window.open('', '_blank', 'width=700,height=900');
+      if (!printWin) {
+        alert('Please allow popups for this site to print counter standee.');
+        return;
+      }
       const todayFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-      printWin.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-  <script>
-    window.onerror = function(msg, url, line, col, err) {
-      console.error("DOM JSERROR:", msg, "line:", line);
-      window.__lastJsError = { msg: msg, line: line, col: col };
-    };
-  </script>
-          <title>Onix Cafeteria Counter Standee</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; text-align: center; padding: 40px; margin: 0; background: #fff; color: #1e293b; }
-            .box { border: 4px solid #30496d; border-radius: 20px; padding: 30px; max-width: 520px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-            h1 { color: #30496d; margin: 10px 0 4px; font-size: 26px; }
-            .sub { color: #64748b; font-size: 14px; margin-bottom: 20px; }
-            .qr-wrap { background: #f8fafc; padding: 20px; border-radius: 16px; display: inline-block; border: 2px solid #e2e8f0; margin-bottom: 20px; }
-            .qr-wrap img { width: 280px; height: 280px; display: block; }
-            .pin-wrap { background: #0f172a; color: white; border-radius: 14px; padding: 16px; margin: 10px 0 20px; }
-            .pin-code { font-size: 56px; font-weight: 900; color: #38bdf8; font-family: monospace; letter-spacing: 0.15em; line-height: 1; }
-            .inst { font-size: 14px; color: #334155; line-height: 1.6; }
-            @media print { button { display: none; } body { padding: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="box">
-            <div style="font-size: 42px;">🏢</div>
-            <h1>ONIX CAFETERIA SERVING DESK</h1>
-            <div class="sub">${todayFormatted}</div>
-            
-            <div class="qr-wrap">
-              <img src="${dailyCode.qrUrl}" alt="Counter QR">
-            </div>
+      const pinStr = String(dailyCode.pin || '5824');
+      const qrStr = String(dailyCode.qrUrl || '');
+      
+      const htmlContent = '<!DOCTYPE html>' +
+        '<html><head><meta charset="UTF-8"><title>Onix Cafeteria Counter Standee</title>' +
+        '<style>' +
+        'body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; text-align: center; padding: 40px; margin: 0; background: #fff; color: #1e293b; }' +
+        '.box { border: 4px solid #30496d; border-radius: 20px; padding: 30px; max-width: 520px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }' +
+        'h1 { color: #30496d; margin: 10px 0 4px; font-size: 26px; }' +
+        '.sub { color: #64748b; font-size: 14px; margin-bottom: 20px; font-weight: 600; }' +
+        '.qr-wrap { background: #f8fafc; padding: 20px; border-radius: 16px; display: inline-block; border: 2px solid #e2e8f0; margin-bottom: 20px; }' +
+        '.qr-wrap img { width: 280px; height: 280px; display: block; margin: 0 auto; }' +
+        '.pin-wrap { background: #0f172a; color: white; border-radius: 14px; padding: 16px; margin: 10px 0 20px; }' +
+        '.pin-code { font-size: 56px; font-weight: 900; color: #38bdf8; font-family: monospace; letter-spacing: 0.15em; line-height: 1; }' +
+        '.inst { font-size: 14px; color: #334155; line-height: 1.6; text-align: left; }' +
+        '@media print { button { display: none !important; } body { padding: 0; } }' +
+        '</style></head><body>' +
+        '<div class="box">' +
+        '<div style="font-size: 42px;">🏢</div>' +
+        '<h1>ONIX CAFETERIA SERVING DESK</h1>' +
+        '<div class="sub">' + todayFormatted + '</div>' +
+        '<div class="qr-wrap"><img src="' + qrStr + '" alt="Counter QR"></div>' +
+        '<div class="pin-wrap">' +
+        '<div style="font-size: 13px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px;">Today\'s 4-Digit Counter PIN</div>' +
+        '<div class="pin-code">' + pinStr + '</div>' +
+        '</div>' +
+        '<div class="inst">' +
+        '<strong>Instructions for Employees:</strong><br>' +
+        '1. Open your <strong>Digital Meal Pass</strong> on your phone.<br>' +
+        '2. Tap <strong>Scan Counter QR</strong> or enter PIN <strong>' + pinStr + '</strong>.<br>' +
+        '3. Show your verified <strong>\"TAKE YOUR LUNCH PLATE\"</strong> screen to cafeteria staff.' +
+        '</div>' +
+        '<div style="margin-top: 30px;">' +
+        '<button onclick="window.print()" style="background: #30496d; color: white; border: none; padding: 10px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;">Print Standee</button>' +
+        '</div></div></body></html>';
 
-            <div class="pin-wrap">
-              <div style="font-size: 13px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px;">Today's 4-Digit Counter PIN</div>
-              <div class="pin-code">${dailyCode.pin}</div>
-            </div>
-
-            <div class="inst">
-              <strong>Instructions for Employees:</strong><br>
-              1. Open your <strong>Digital Meal Pass</strong> on your phone.<br>
-              2. Tap <strong>Scan Counter QR</strong> or enter PIN <strong>${dailyCode.pin}</strong>.<br>
-              3. Show your verified <strong>"TAKE YOUR LUNCH PLATE"</strong> screen to cafeteria staff.
-            </div>
-            
-            <div style="margin-top: 30px;">
-              <button onclick="window.print()" style="background: #30496d; color: white; border: none; padding: 10px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;">Print Standee</button>
-            </div>
-          </div>
-        </body>
-        </html>
-      `);
+      printWin.document.open();
+      printWin.document.write(htmlContent);
       printWin.document.close();
     }
 
@@ -2876,7 +2870,7 @@
                 <span style="color:#cbd5e1;">Verified At:</span>
                 <span style="font-weight:700;">${pass.servedAt || 'Today'}</span>
               </div>
-              ${pass.isUnplanned ? '<div style="display:flex; justify-content:space-between; color:#fde68a;"><span>Registration:</span><strong>⚡ Emergency Same-Day</strong></div>' : ''}
+              ${pass.isUnplanned ? '<div style="display:flex; justify-content:space-between; color:#fde68a;"><span>Registration:</span><strong>⚡ Same-Day Booking</strong></div>' : ''}
             </div>
 
             <div style="margin-top:16px;">
@@ -3661,7 +3655,7 @@
         const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
         if (!enteredId || enteredId.length < 2) {
-          showToast("Please enter your Employee ID for Ad-Hoc booking", "⚠️");
+          showToast("Please enter your Employee ID for same-day booking", "⚠️");
           if (idInput) idInput.focus();
           return;
         }
@@ -4624,12 +4618,6 @@ let csvContent = "\uFEFF"; // UTF-8 BOM for Microsoft Excel
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script>
-    window.onerror = function(msg, url, line, col, err) {
-      console.error("DOM JSERROR:", msg, "line:", line);
-      window.__lastJsError = { msg: msg, line: line, col: col };
-    };
-  </script>
   <meta charset="UTF-8">
   <title>Onix Cafeteria | Printable Daily Lunch Poster</title>
   <style>
