@@ -1179,6 +1179,7 @@
           <span>🍽️ Live Meal Serving Summary</span>
           <div style="display:flex; align-items:center; gap:8px;">
             <button type="button" class="btn btn-primary" onclick="syncLiveBookingsFromGoogleSheet()" style="width:auto; padding:3px 10px; font-size:0.75rem; background:#30496d;">🔄 Sync Live Sheet</button>
+          <button type="button" class="btn btn-outline" onclick="forceClearAndSyncFromSheet()" style="width:auto; padding:3px 10px; font-size:0.75rem; border-color:#cbd5e1; color:#475569;" title="Purge local cache and sync clean sheet">🗑️ Reset Cache</button>
             <span style="font-size:0.72rem; color:#047857; background:#dcfce7; padding:2px 8px; border-radius:10px; font-weight:700;">Active Serving</span>
           </div>
         </h3>
@@ -1463,6 +1464,7 @@
           <span>🍽️ Today & Month Serving Overview</span>
           <div style="display:flex; align-items:center; gap:8px;">
             <button type="button" class="btn btn-primary" onclick="syncLiveBookingsFromGoogleSheet()" style="width:auto; padding:3px 10px; font-size:0.75rem; background:#30496d;">🔄 Sync Live Sheet</button>
+          <button type="button" class="btn btn-outline" onclick="forceClearAndSyncFromSheet()" style="width:auto; padding:3px 10px; font-size:0.75rem; border-color:#cbd5e1; color:#475569;" title="Purge local cache and sync clean sheet">🗑️ Reset Cache</button>
             <span style="font-size:0.72rem; color:#047857; background:#dcfce7; padding:2px 8px; border-radius:10px; font-weight:700;">Live Attendance</span>
           </div>
         </h3>
@@ -2284,56 +2286,101 @@
     // ==========================================
     function syncLiveBookingsFromGoogleSheet(silent = false) {
       const gasUrl = getActiveGasUrl();
-      if (!gasUrl) return;
+      if (!gasUrl) {
+        if (!silent) showToast("Google Sheet Web App URL not configured", "⚠️");
+        return;
+      }
+
+      // Visual feedback on sync buttons
+      const syncBtns = document.querySelectorAll('button[onclick*="syncLiveBookingsFromGoogleSheet"]');
+      syncBtns.forEach(btn => {
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span>⏳ Syncing...</span>';
+        btn.disabled = true;
+      });
+
+      const resetSyncBtns = () => {
+        syncBtns.forEach(btn => {
+          if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+          btn.disabled = false;
+        });
+      };
 
       const cbName = 'onGasBookingsLoaded_' + Math.floor(Math.random() * 10000000);
+
+      // 8-second safety timeout
+      const syncTimeout = setTimeout(() => {
+        if (window[cbName]) {
+          delete window[cbName];
+          const st = document.getElementById(cbName);
+          if (st && st.parentNode) st.parentNode.removeChild(st);
+          resetSyncBtns();
+          if (!silent) {
+            showToast("Connection timed out. Check Google Sheet Web App deployment.", "⚠️");
+          }
+        }
+      }, 8000);
+
       window[cbName] = function(res) {
+        clearTimeout(syncTimeout);
+        resetSyncBtns();
         try {
           if (res && res.status === 'success' && Array.isArray(res.bookings)) {
             const remoteBookings = res.bookings;
-            if (remoteBookings.length > 0) {
-              const bookingMap = new Map();
 
-              // 1. Add all remote bookings from Google Sheets
-              remoteBookings.forEach((rb, idx) => {
-                const key = (rb.dateDisplay || rb.date) + '_' + (rb.tokenCode || rb.empId || idx);
-                bookingMap.set(key, {
-                  id: 'BK-' + (Date.now() - idx * 1000),
-                  date: rb.date,
-                  dateDisplay: rb.dateDisplay || rb.date,
-                  name: rb.name || 'Onix Staff',
-                  empId: rb.empId || '',
-                  email: (rb.empId && rb.empId.includes('@')) ? rb.empId : '',
-                  mealType: (rb.mealType || 'veg').toLowerCase(),
-                  tokenCode: rb.tokenCode || 'A01',
-                  status: rb.status || 'Confirmed',
-                  servedAt: rb.servedAt || '',
-                  servedDate: (rb.status && rb.status.includes('Served')) ? (rb.date || '') : '',
-                  timestamp: ''
-                });
-              });
+            // Map all remote bookings directly from Google Sheet
+            const freshBookings = remoteBookings.map((rb, idx) => ({
+              id: 'BK-' + (Date.now() - idx * 1000),
+              date: rb.date,
+              dateDisplay: rb.dateDisplay || rb.date,
+              name: rb.name || 'Onix Staff',
+              empId: rb.empId || '',
+              email: (rb.empId && rb.empId.includes('@')) ? rb.empId : (rb.email || ''),
+              mealType: (rb.mealType || 'veg').toLowerCase(),
+              tokenCode: rb.tokenCode || 'A01',
+              status: rb.status || 'Confirmed',
+              isUnplanned: !!rb.isUnplanned || (rb.status && rb.status.includes('Unplanned')),
+              servedAt: rb.servedAt || '',
+              servedDate: (rb.status && (rb.status.includes('Served') || rb.status.includes('SERVED'))) ? (rb.date || '') : '',
+              timestamp: ''
+            }));
 
-              // 2. Retain any recent local bookings that might not have appeared in remote yet
-              appState.bookings.forEach(lb => {
-                const key = (lb.dateDisplay || lb.date) + '_' + (lb.tokenCode || lb.empId);
-                if (!bookingMap.has(key)) {
-                  bookingMap.set(key, lb);
-                }
-              });
+            // The Google Sheet is the authoritative Single Source of Truth:
+            appState.bookings = freshBookings;
+            try {
+              localStorage.setItem('onix_bookings', JSON.stringify(freshBookings));
+            } catch(e) {}
 
-              appState.bookings = Array.from(bookingMap.values());
-              try {
-                localStorage.setItem('onix_bookings', JSON.stringify(appState.bookings));
-              } catch(e) {}
-
-              calculateSelectedDates();
-              if (appState.currentRole === 'vendor') renderVendorDashboard();
-              if (appState.currentRole === 'committee') renderCommitteeDashboard();
-              if (!silent) showToast(`Synced ${remoteBookings.length} bookings from Google Sheet!`, "☁️");
+            // Keep activeUserPass in sync with fresh bookings
+            if (freshBookings.length === 0) {
+              appState.activeUserPass = null;
+              try { localStorage.removeItem('onix_active_pass'); } catch(e) {}
+            } else if (appState.activeUserPass) {
+              const matched = freshBookings.find(b => b.tokenCode === appState.activeUserPass.tokenCode || b.id === appState.activeUserPass.id);
+              appState.activeUserPass = matched || freshBookings[0];
+              try { localStorage.setItem('onix_active_pass', JSON.stringify(appState.activeUserPass)); } catch(e) {}
             }
+
+            calculateSelectedDates();
+            renderVendorDashboard();
+            renderCommitteeDashboard();
+            renderMealPass();
+            renderVendorLiveQueue();
+            updateVendorServedSummary();
+
+            if (!silent) {
+              if (freshBookings.length === 0) {
+                showToast("Google Sheet is Clean (0 bookings). System reset to 0!", "ℹ️");
+              } else {
+                showToast(`Synced ${freshBookings.length} live bookings from Google Sheet!`, "☁️");
+              }
+            }
+          } else {
+            if (!silent) showToast("Google Sheet returned unexpected format", "⚠️");
           }
         } catch(err) {
           console.warn("Live sync error:", err);
+          if (!silent) showToast("Sync error: " + err.message, "❌");
         } finally {
           delete window[cbName];
           const scriptTag = document.getElementById(cbName);
@@ -2345,10 +2392,27 @@
       script.id = cbName;
       script.src = gasUrl + (gasUrl.includes('?') ? '&' : '?') + 'action=getBookings&callback=' + cbName + '&_t=' + Date.now();
       script.onerror = function() {
+        clearTimeout(syncTimeout);
+        resetSyncBtns();
         delete window[cbName];
         if (script.parentNode) script.parentNode.removeChild(script);
+        if (!silent) showToast("Network error contacting Google Apps Script Web App", "❌");
       };
       document.head.appendChild(script);
+    }
+
+    function forceClearAndSyncFromSheet() {
+      appState.bookings = [];
+      appState.activeUserPass = null;
+      try {
+        localStorage.removeItem('onix_bookings');
+        localStorage.removeItem('onix_active_pass');
+      } catch(e) {}
+      renderVendorDashboard();
+      renderCommitteeDashboard();
+      renderMealPass();
+      showToast("Local cache wiped. Fetching fresh sheet data...", "🔄");
+      syncLiveBookingsFromGoogleSheet(false);
     }
 
     // ==========================================
@@ -4181,29 +4245,40 @@
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      const tomorrowIso = getLocalDateIso(tomorrow);
 
       let vegCount = 0;
       let nonvegCount = 0;
       let optoutCount = 0;
 
       appState.bookings.forEach(b => {
-        if (b.mealType === 'veg') vegCount++;
-        else if (b.mealType === 'nonveg') nonvegCount++;
-        else if (b.mealType === 'optout') optoutCount++;
+        const bIso = parseBookingDateToIso(b.date);
+        const isTom = (bIso === tomorrowIso || (b.date && b.date.includes(tomorrowStr)) || (b.dateDisplay && b.dateDisplay.includes(tomorrow.getDate().toString())));
+        if (isTom) {
+          if (b.mealType === 'veg') vegCount++;
+          else if (b.mealType === 'nonveg') nonvegCount++;
+          else if (b.mealType === 'optout') optoutCount++;
+        }
       });
 
       const totalMeals = vegCount + nonvegCount;
       const bufferMeals = Math.ceil(totalMeals * 0.1); // 10% buffer
 
-      document.getElementById('vendor-headcount-total').textContent = totalMeals;
-      document.getElementById('vendor-headcount-veg').textContent = vegCount;
-      document.getElementById('vendor-headcount-nonveg').textContent = nonvegCount;
-      document.getElementById('vendor-headcount-buffer').textContent = `+${bufferMeals} buffer`;
+      const elTotal = document.getElementById('vendor-headcount-total');
+      const elVeg = document.getElementById('vendor-headcount-veg');
+      const elNonveg = document.getElementById('vendor-headcount-nonveg');
+      const elBuffer = document.getElementById('vendor-headcount-buffer');
+
+      if (elTotal) elTotal.textContent = totalMeals;
+      if (elVeg) elVeg.textContent = vegCount;
+      if (elNonveg) elNonveg.textContent = nonvegCount;
+      if (elBuffer) elBuffer.textContent = `+${bufferMeals} buffer`;
 
       renderVendorMenuEditor();
       renderVendorFeedbackList();
       renderVendorLiveQueue();
       renderVendorCounterDisplay();
+      updateVendorServedSummary();
       filterServedData('today');
     }
 
