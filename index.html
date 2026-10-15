@@ -2000,6 +2000,8 @@
 
       if (role === 'vendor') {
         renderVendorDashboard();
+        renderVendorLiveQueue();
+        updateVendorServedSummary();
         syncLiveBookingsFromGoogleSheet(true);
       }
       if (role === 'committee') {
@@ -2214,19 +2216,17 @@
 
         const payloadStr = JSON.stringify(payload);
 
-        // Send a single clean POST request using standard fetch (no-cors mode)
-        if (window.fetch) {
-          fetch(gasUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: payloadStr
-          }).catch(function(err) {
-            console.warn("fetch sync failed, attempting iframe form fallback:", err);
-            submitViaHiddenForm(gasUrl, payloadStr);
-          });
-        } else {
-          submitViaHiddenForm(gasUrl, payloadStr);
+        // 1. Submit via dynamic hidden iframe form
+        // (Guaranteed to pass Okta SSO SAML & Google Workspace domain authentication cookies)
+        submitViaHiddenForm(gasUrl, payloadStr);
+
+        // 2. Fallback GET ping if payload fits URL character limits
+        if (payloadStr.length < 1800) {
+          try {
+            const pingUrl = gasUrl + (gasUrl.includes('?') ? '&' : '?') + 'payload=' + encodeURIComponent(payloadStr);
+            const img = new Image();
+            img.src = pingUrl;
+          } catch(e) {}
         }
       } catch(err) {
         console.warn("syncToGoogleSheet notice:", err);
@@ -2235,13 +2235,40 @@
 
     function submitViaHiddenForm(gasUrl, payloadStr) {
       try {
-        const hiddenForm = document.getElementById('gas-hidden-form');
-        const hiddenPayload = document.getElementById('gas-hidden-payload');
-        if (hiddenForm && hiddenPayload) {
-          hiddenForm.action = gasUrl;
-          hiddenPayload.value = payloadStr;
-          hiddenForm.submit();
-        }
+        const frameName = 'gas_sync_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        const iframe = document.createElement('iframe');
+        iframe.name = frameName;
+        iframe.id = frameName;
+        iframe.style.position = 'absolute';
+        iframe.style.width = '1px';
+        iframe.style.height = '1px';
+        iframe.style.opacity = '0';
+        iframe.style.pointerEvents = 'none';
+        iframe.style.left = '-9999px';
+        document.body.appendChild(iframe);
+
+        const form = document.createElement('form');
+        form.target = frameName;
+        form.method = 'POST';
+        form.action = gasUrl;
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payload';
+        input.value = payloadStr;
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+        form.submit();
+
+        // Safely garbage-collect iframe and form after navigation finishes
+        setTimeout(() => {
+          try {
+            if (form.parentNode) form.parentNode.removeChild(form);
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          } catch(e) {}
+        }, 15000);
       } catch(e) {
         console.warn("hidden form fallback error:", e);
       }
@@ -2253,14 +2280,13 @@
         return;
       }
       showToast(`Pushing ${appState.bookings.length} bookings to Google Sheet...`, "⏳");
-      appState.bookings.forEach((b, idx) => {
-        setTimeout(() => {
-          syncToGoogleSheet(b);
-        }, idx * 300);
+      syncToGoogleSheet({
+        action: 'batchBookings',
+        bookings: appState.bookings
       });
       setTimeout(() => {
         showToast("All bookings pushed to Google Sheet! Check your sheet.", "🎉");
-      }, appState.bookings.length * 300 + 500);
+      }, 1000);
     }
 
     // ==========================================
@@ -2344,23 +2370,33 @@
               };
             });
 
-            // The Google Sheet is the authoritative Single Source of Truth:
-            appState.bookings = freshBookings;
+            // Build set of remote keys (date + token / empId)
+            const remoteKeys = new Set(freshBookings.map(b => (b.date || '') + '_' + (b.tokenCode || '').toUpperCase()));
+
+            // Keep any fresh local bookings that are newly created and not yet reflected in Google Sheet
+            const pendingLocal = appState.bookings.filter(lb => {
+              const k = (lb.date || '') + '_' + (lb.tokenCode || '').toUpperCase();
+              return !remoteKeys.has(k);
+            });
+
+            // Merged: Remote Google Sheet is authoritative, plus newly created local bookings waiting for sheet reflection
+            const mergedBookings = [...freshBookings, ...pendingLocal];
+            appState.bookings = mergedBookings;
             try {
-              localStorage.setItem('onix_bookings', JSON.stringify(freshBookings));
+              localStorage.setItem('onix_bookings', JSON.stringify(mergedBookings));
             } catch(e) {}
 
-            // Keep activeUserPass in sync with fresh bookings
-            if (freshBookings.length === 0) {
+            // Keep activeUserPass in sync with bookings
+            if (mergedBookings.length === 0) {
               appState.activeUserPass = null;
               try { localStorage.removeItem('onix_active_pass'); } catch(e) {}
             } else if (appState.activeUserPass) {
-              const matched = freshBookings.find(b => b.tokenCode === appState.activeUserPass.tokenCode || b.id === appState.activeUserPass.id);
-              appState.activeUserPass = matched || freshBookings[0];
+              const matched = mergedBookings.find(b => b.tokenCode === appState.activeUserPass.tokenCode || b.id === appState.activeUserPass.id);
+              appState.activeUserPass = matched || mergedBookings[0];
               try { localStorage.setItem('onix_active_pass', JSON.stringify(appState.activeUserPass)); } catch(e) {}
             } else {
-              appState.activeUserPass = freshBookings[0];
-              try { localStorage.setItem('onix_active_pass', JSON.stringify(freshBookings[0])); } catch(e) {}
+              appState.activeUserPass = mergedBookings[0];
+              try { localStorage.setItem('onix_active_pass', JSON.stringify(mergedBookings[0])); } catch(e) {}
             }
 
             calculateSelectedDates();
@@ -4044,12 +4080,21 @@
         appState.bookings = appState.bookings.filter(b => !(b.date === booking.date && (b.tokenCode === booking.tokenCode || (b.empId && b.empId === booking.empId))));
         appState.bookings.unshift(booking);
 
-        try {
-          syncToGoogleSheet(booking);
-        } catch(err) {
-          console.warn("Sync error:", err);
-        }
       });
+
+      // Synchronize all generated bookings to Google Sheet (Single or Batch)
+      try {
+        if (generatedBookings.length > 1) {
+          syncToGoogleSheet({
+            action: 'batchBookings',
+            bookings: generatedBookings
+          });
+        } else if (generatedBookings.length === 1) {
+          syncToGoogleSheet(generatedBookings[0]);
+        }
+      } catch(err) {
+        console.warn("Sync error:", err);
+      }
 
       try {
         localStorage.setItem('onix_bookings', JSON.stringify(appState.bookings));
