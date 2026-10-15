@@ -999,23 +999,35 @@
               </div>
             </div>
 
-            <!-- Hidden Form & Iframe for High-Reliability Google Sheets Sync (Bypasses SSO & CORS) -->
-            <form id="gas-hidden-form" target="gas-hidden-iframe" method="POST" action="https://script.google.com/a/macros/onixnet.com/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec" style="display:none;">
+            <!-- Hidden Form & Iframe for High-Reliability Google Sheets Sync (Universal Endpoint) -->
+            <form id="gas-hidden-form" target="gas-hidden-iframe" method="POST" action="https://script.google.com/macros/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec" style="display:none;">
               <input type="hidden" name="payload" id="gas-hidden-payload">
             </form>
             <iframe name="gas-hidden-iframe" id="gas-hidden-iframe" style="display:none; width:0; height:0; border:none;"></iframe>
 
+            <!-- Employee Profile Saved Badge (Zero-Friction 1-Click Booking) -->
+            <div id="employee-saved-badge" style="display:none; background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:10px 14px; margin-bottom:16px; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.1rem;">👤</span>
+                <div>
+                  <div style="font-size:0.7rem; color:#166534; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Employee Profile (Saved)</div>
+                  <div style="font-size:0.85rem; color:#14532d; font-weight:800;" id="employee-badge-text">EMP-104 &bull; name@onixnet.com</div>
+                </div>
+              </div>
+              <button type="button" onclick="toggleEditProfile(true)" style="background:#dcfce7; border:1px solid #86efac; color:#15803d; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer;">
+                ✏️ Change
+              </button>
+            </div>
 
-
-            <!-- Conditional Same-Day Registration Details (Visible ONLY for Same-Day Ad-Hoc) -->
-            <div id="adhoc-credentials-container" style="display:none; background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:10px; padding:14px; margin-bottom:16px;">
+            <!-- Employee Credentials Card (Input on first visit or when changing) -->
+            <div id="adhoc-credentials-container" style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:16px;">
               <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
                 <span style="font-size:1rem;">🆔</span>
-                <strong style="color:#0369a1; font-size:0.85rem;">Same-Day Registration Details</strong>
-                <span style="font-size:0.7rem; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:auto;">Required for Today</span>
+                <strong style="color:#1e293b; font-size:0.85rem;" id="employee-cred-title">Employee Details</strong>
+                <span style="font-size:0.7rem; color:#0369a1; background:#e0f2fe; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:auto;" id="employee-cred-tag">Saved on this device</span>
               </div>
-              <p style="font-size:0.75rem; color:#0284c7; margin:0 0 10px 0;">
-                Please provide your Employee ID and Official Email for same-day meal allocation:
+              <p style="font-size:0.75rem; color:#64748b; margin:0 0 10px 0;" id="employee-cred-subtitle">
+                Please enter your Employee ID and Official Email. Saved for 1-click future bookings:
               </p>
               
               <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
@@ -1516,7 +1528,7 @@
             Target: <code>docs.google.com/.../1GAuOvWEfylH6BulYR0rkYNdkP6LS6tz5s6TPTyp5Wr4</code>
           </p>
           <div style="display:flex; gap:8px;">
-            <input type="text" id="gas-webhook-url" placeholder="https://script.google.com/a/macros/onixnet.com/s/.../exec" value="https://script.google.com/a/macros/onixnet.com/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec" style="font-size:0.8rem; padding:8px 10px;">
+            <input type="text" id="gas-webhook-url" placeholder="https://script.google.com/macros/s/.../exec" value="https://script.google.com/macros/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec" style="font-size:0.8rem; padding:8px 10px;">
             <button class="btn btn-primary" style="width:auto; padding:0 16px; font-size:0.8rem;" onclick="saveGoogleScriptUrl()">Save URL</button>
           </div>
         </div>
@@ -1780,7 +1792,7 @@
           Cafeteria catering quantities are scheduled in advance based on prior-day bookings to ensure portion availability and avoid food wastage.
         </p>
         <p style="margin:0;">
-          Ad-hoc same-day bookings impact catering forecasting. <strong>Please ensure advance booking whenever possible.</strong>
+          Same-day bookings impact catering forecasting. <strong>Please ensure advance booking whenever possible.</strong>
         </p>
       </div>
       <label style="display:flex; align-items:flex-start; gap:10px; font-size:0.82rem; color:#334155; margin-bottom:16px; cursor:pointer;">
@@ -1857,12 +1869,17 @@
     // ==========================================
     // INITIAL DATA & STORAGE SETUP
     // ==========================================
-    const DEFAULT_GAS_URL = "https://script.google.com/a/macros/onixnet.com/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec";
-    const ONIX_DOMAIN_GAS_URL = "https://script.google.com/a/macros/onixnet.com/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec";
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec";
+    const ONIX_DOMAIN_GAS_URL = "https://script.google.com/macros/s/AKfycbzTtdhXXnLHZqxmKxsKq-HwIKjz-VGakpshfOnZck-GFVL8xnt2Fvwe3Mhq_c3WPXp4hw/exec";
 
     function getActiveGasUrl() {
       try {
-        return localStorage.getItem('onix_gas_url') || DEFAULT_GAS_URL;
+        let url = localStorage.getItem('onix_gas_url') || DEFAULT_GAS_URL;
+        if (url && url.includes('/a/macros/onixnet.com/')) {
+          url = url.replace('/a/macros/onixnet.com/', '/macros/');
+          localStorage.setItem('onix_gas_url', url);
+        }
+        return url;
       } catch(e) {
         return DEFAULT_GAS_URL;
       }
@@ -2216,11 +2233,20 @@
 
         const payloadStr = JSON.stringify(payload);
 
-        // 1. Submit via dynamic hidden iframe form
-        // (Guaranteed to pass Okta SSO SAML & Google Workspace domain authentication cookies)
+        // 1. Direct high-speed POST via fetch no-cors (universal on modern mobile & desktop browsers)
+        try {
+          fetch(gasUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: payloadStr
+          }).catch(() => {});
+        } catch(e) {}
+
+        // 2. Submit via dynamic hidden iframe form
         submitViaHiddenForm(gasUrl, payloadStr);
 
-        // 2. Fallback GET ping if payload fits URL character limits
+        // 3. Fallback GET ping if payload fits URL character limits
         if (payloadStr.length < 1800) {
           try {
             const pingUrl = gasUrl + (gasUrl.includes('?') ? '&' : '?') + 'payload=' + encodeURIComponent(payloadStr);
@@ -2386,17 +2412,31 @@
               localStorage.setItem('onix_bookings', JSON.stringify(mergedBookings));
             } catch(e) {}
 
-            // Keep activeUserPass in sync with bookings
+            // Keep activeUserPass in sync with bookings (Personalized for this employee device)
+            const myEmpId = localStorage.getItem('onix_auth_empid') || '';
+            const myEmail = localStorage.getItem('onix_auth_email') || '';
+
             if (mergedBookings.length === 0) {
               appState.activeUserPass = null;
               try { localStorage.removeItem('onix_active_pass'); } catch(e) {}
-            } else if (appState.activeUserPass) {
-              const matched = mergedBookings.find(b => b.tokenCode === appState.activeUserPass.tokenCode || b.id === appState.activeUserPass.id);
-              appState.activeUserPass = matched || mergedBookings[0];
-              try { localStorage.setItem('onix_active_pass', JSON.stringify(appState.activeUserPass)); } catch(e) {}
             } else {
-              appState.activeUserPass = mergedBookings[0];
-              try { localStorage.setItem('onix_active_pass', JSON.stringify(mergedBookings[0])); } catch(e) {}
+              let myPass = null;
+              if (myEmpId || myEmail) {
+                myPass = mergedBookings.find(b => 
+                  (myEmpId && b.empId && (b.empId.toUpperCase() === myEmpId.toUpperCase() || b.empId.toUpperCase().includes(myEmpId.toUpperCase()))) ||
+                  (myEmail && b.email && b.email.toLowerCase() === myEmail.toLowerCase())
+                );
+              }
+              if (!myPass && appState.activeUserPass) {
+                myPass = mergedBookings.find(b => b.tokenCode === appState.activeUserPass.tokenCode || b.id === appState.activeUserPass.id);
+              }
+              if (!myPass && mergedBookings.length > 0) {
+                myPass = mergedBookings[0];
+              }
+              appState.activeUserPass = myPass;
+              if (myPass) {
+                try { localStorage.setItem('onix_active_pass', JSON.stringify(myPass)); } catch(e) {}
+              }
             }
 
             calculateSelectedDates();
@@ -2663,16 +2703,10 @@
         if (el) el.className = (p === 'unplanned') ? 'meal-radio-card selected-veg' : 'meal-radio-card';
       });
 
-      // Show Ad-Hoc credentials container ONLY for Same-Day Ad-Hoc
-      const adhocBox = document.getElementById('adhoc-credentials-container');
-      if (adhocBox) {
-        adhocBox.style.display = 'block';
-        adhocBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-
       const customBox = document.getElementById('custom-date-container');
       if (customBox) customBox.style.display = 'none';
 
+      renderProfileState();
       calculateSelectedDates();
       updateClockAndCutoff();
       showToast("Same-Day Booking enabled for Today", "⚡");
@@ -2690,10 +2724,6 @@
         if (el) el.className = (p === period) ? 'meal-radio-card selected-veg' : 'meal-radio-card';
       });
 
-      // Hide Ad-Hoc credentials container for all advance bookings
-      const adhocBox = document.getElementById('adhoc-credentials-container');
-      if (adhocBox) adhocBox.style.display = 'none';
-
       const customBox = document.getElementById('custom-date-container');
       if (customBox) {
         customBox.style.display = (period === 'custom') ? 'block' : 'none';
@@ -2702,6 +2732,7 @@
         }
       }
 
+      renderProfileState();
       calculateSelectedDates();
       updateClockAndCutoff();
     }
@@ -2827,18 +2858,28 @@
 
     function parseBookingDateToIso(rawDate) {
       if (!rawDate) return '';
-      rawDate = String(rawDate).trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return rawDate;
-      if (/^\d{4}-\d{2}-\d{2}T/.test(rawDate)) return rawDate.split('T')[0];
+      let str = String(rawDate).replace(/^['"⚡\s]+/, '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+      if (/^\d{4}-\d{2}-\d{2}T/.test(str)) return str.split('T')[0];
 
-      const dmy = rawDate.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      // Handle GMT strings e.g. "Thu Oct 15 2026 00:00:00 GMT+0530 (India Standard Time)"
+      if (str.includes('GMT') || str.includes('Standard Time') || str.includes('T00:00')) {
+        try {
+          const d = new Date(str);
+          if (!isNaN(d.getTime())) {
+            return getLocalDateIso(d);
+          }
+        } catch(e) {}
+      }
+
+      const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
       if (dmy) {
         return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
       }
 
       const now = new Date();
       const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
-      const mMatch = rawDate.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:[,\s]+(\d{4}))?/i);
+      const mMatch = str.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:[,\s]+(\d{4}))?/i);
       if (mMatch) {
         const mon = months[mMatch[1].toLowerCase()];
         const day = parseInt(mMatch[2], 10);
@@ -2847,7 +2888,7 @@
         return getLocalDateIso(d);
       }
 
-      const p = new Date(rawDate);
+      const p = new Date(str);
       if (!isNaN(p.getTime())) {
         if (p.getFullYear() < 2000) p.setFullYear(now.getFullYear());
         return getLocalDateIso(p);
@@ -2857,10 +2898,21 @@
 
     function formatDateForDisplay(rawDate) {
       if (!rawDate) return '';
-      const str = String(rawDate).trim();
+      let str = String(rawDate).replace(/^['"⚡\s]+/, '').trim();
       if (/^[A-Za-z]+,\s+[A-Za-z]{3}\s+\d{1,2}$/.test(str)) return str;
 
-      const iso = parseBookingDateToIso(rawDate);
+      if (str.includes('GMT') || str.includes('Standard Time') || str.includes('T00:00')) {
+        try {
+          const d = new Date(str);
+          if (!isNaN(d.getTime())) {
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+          }
+        } catch(e) {}
+      }
+
+      const iso = parseBookingDateToIso(str);
       if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
         const parts = iso.split('-');
         const y = parseInt(parts[0], 10);
@@ -3941,6 +3993,52 @@
       } catch(e) {}
     }
 
+    function renderProfileState() {
+      try {
+        const savedId = localStorage.getItem('onix_auth_empid') || '';
+        const savedEmail = localStorage.getItem('onix_auth_email') || '';
+        const badgeEl = document.getElementById('employee-saved-badge');
+        const badgeText = document.getElementById('employee-badge-text');
+        const credBox = document.getElementById('adhoc-credentials-container');
+        const idInput = document.getElementById('booking-emp-id');
+        const emailInput = document.getElementById('booking-emp-email');
+
+        if (idInput && savedId && !idInput.value) idInput.value = savedId;
+        if (emailInput && savedEmail && !emailInput.value) emailInput.value = savedEmail;
+
+        if (savedId && savedEmail) {
+          if (badgeEl) {
+            badgeEl.style.display = 'flex';
+            if (badgeText) badgeText.textContent = `${savedId} • ${savedEmail}`;
+          }
+          if (credBox) {
+            credBox.style.display = 'none';
+          }
+        } else {
+          if (badgeEl) badgeEl.style.display = 'none';
+          if (credBox) credBox.style.display = 'block';
+        }
+      } catch(e) {}
+    }
+
+    function toggleEditProfile(forceOpen = true) {
+      const badgeEl = document.getElementById('employee-saved-badge');
+      const credBox = document.getElementById('adhoc-credentials-container');
+      const idInput = document.getElementById('booking-emp-id');
+      if (forceOpen) {
+        if (badgeEl) badgeEl.style.display = 'none';
+        if (credBox) {
+          credBox.style.display = 'block';
+          if (idInput) {
+            idInput.focus();
+            idInput.select();
+          }
+        }
+      } else {
+        renderProfileState();
+      }
+    }
+
     function initDeviceProfile() {
       cleanJunkTestData();
       const urlParams = new URLSearchParams(window.location.search);
@@ -3951,21 +4049,13 @@
       if (urlEmail && isAllowedOnixEmail(urlEmail)) {
         const cleanEmail = urlEmail.trim().toLowerCase();
         const derivedName = urlName || cleanEmail.split('@')[0].replace('.', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-        const derivedEmpId = urlId || cleanEmail.split('@')[0];
+        const derivedEmpId = urlId || cleanEmail.split('@')[0].toUpperCase();
         localStorage.setItem('onix_auth_email', cleanEmail);
         localStorage.setItem('onix_auth_name', derivedName);
         localStorage.setItem('onix_auth_empid', derivedEmpId);
       }
 
-      // Pre-fill mandatory employee name and ID fields
-      try {
-        const nameInput = document.getElementById('booking-emp-name');
-        const idInput = document.getElementById('booking-emp-id');
-        const savedName = localStorage.getItem('onix_auth_name') || '';
-        const savedId = localStorage.getItem('onix_auth_empid') || '';
-        if (nameInput && !nameInput.value && savedName) nameInput.value = savedName;
-        if (idInput && !idInput.value && savedId) idInput.value = savedId;
-      } catch(e) {}
+      renderProfileState();
     }
 
     // High-Concurrency Sequential Daily Token & Booking Submission
@@ -3978,45 +4068,42 @@
       const mealType = mealTypeEl ? mealTypeEl.value : 'veg';
       const isAdHoc = (activeBookingPeriod === 'unplanned');
 
-      let empId = '';
-      let email = '';
-      let name = '';
+      const idInput = document.getElementById('booking-emp-id');
+      const emailInput = document.getElementById('booking-emp-email');
+      const enteredId = idInput ? idInput.value.trim().toUpperCase() : '';
+      const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
-      if (isAdHoc) {
-        // Enforce Emp ID & Email ONLY for Ad-Hoc Same-Day Booking
-        const idInput = document.getElementById('booking-emp-id');
-        const emailInput = document.getElementById('booking-emp-email');
-        const enteredId = idInput ? idInput.value.trim().toUpperCase() : '';
-        const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
+      const savedId = localStorage.getItem('onix_auth_empid') || '';
+      const savedEmail = localStorage.getItem('onix_auth_email') || '';
 
-        if (!enteredId || enteredId.length < 2) {
-          showToast("Please enter your Employee ID for same-day booking", "⚠️");
-          if (idInput) idInput.focus();
-          return;
-        }
+      const finalId = enteredId || savedId;
+      const finalEmail = enteredEmail || savedEmail;
 
-        if (!enteredEmail || !enteredEmail.includes('@') || enteredEmail.length < 5) {
-          showToast("Please enter your Official Onix Email ID", "⚠️");
-          if (emailInput) emailInput.focus();
-          return;
-        }
-
-        empId = enteredId;
-        email = enteredEmail;
-        name = email.split('@')[0].replace('.', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
-
-        try {
-          localStorage.setItem('onix_auth_empid', empId);
-          localStorage.setItem('onix_auth_email', email);
-          localStorage.setItem('onix_auth_name', name);
-        } catch(err) {}
-      } else {
-        // Regular Advance Booking (Zero friction for 500+ employees)
-        const urlParams = new URLSearchParams(window.location.search);
-        email = urlParams.get('email') || localStorage.getItem('onix_auth_email') || 'onix.staff@onixnet.com';
-        empId = urlParams.get('id') || urlParams.get('empid') || localStorage.getItem('onix_auth_empid') || email.split('@')[0].toUpperCase();
-        name = urlParams.get('name') || localStorage.getItem('onix_auth_name') || email.split('@')[0].replace('.', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+      if (!finalId || finalId.length < 2) {
+        showToast("Please enter your Employee ID (e.g. EMP-104)", "⚠️");
+        toggleEditProfile(true);
+        if (idInput) idInput.focus();
+        return;
       }
+
+      if (!finalEmail || !finalEmail.includes('@') || finalEmail.length < 5) {
+        showToast("Please enter your Official Onix Email ID", "⚠️");
+        toggleEditProfile(true);
+        if (emailInput) emailInput.focus();
+        return;
+      }
+
+      const empId = finalId;
+      const email = finalEmail;
+      const name = email.split('@')[0].replace('.', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
+
+      try {
+        localStorage.setItem('onix_auth_empid', empId);
+        localStorage.setItem('onix_auth_email', email);
+        localStorage.setItem('onix_auth_name', name);
+      } catch(err) {}
+
+      renderProfileState();
 
       if (!selectedWorkingDates || selectedWorkingDates.length === 0) {
         calculateSelectedDates();
