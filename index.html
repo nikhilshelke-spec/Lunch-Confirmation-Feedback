@@ -2214,54 +2214,36 @@
 
         const payloadStr = JSON.stringify(payload);
 
-        // 1. Submit via hidden iframe form (Top reliability: passes Google Workspace & Okta domain cookies)
-        try {
-          const hiddenForm = document.getElementById('gas-hidden-form');
-          const hiddenPayload = document.getElementById('gas-hidden-payload');
-          if (hiddenForm && hiddenPayload) {
-            hiddenForm.action = gasUrl;
-            hiddenPayload.value = payloadStr;
-            hiddenForm.submit();
-          }
-        } catch(e) {}
-
-        // 2. Parallel Send via POST with text/plain (Standard CORS bypass for Apps Script)
-        try {
+        // Send a single clean POST request using standard fetch (no-cors mode)
+        if (window.fetch) {
           fetch(gasUrl, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: payloadStr
-          }).catch(function(err) {});
-        } catch(e) {}
-
-        try {
-          if (ONIX_DOMAIN_GAS_URL && gasUrl !== ONIX_DOMAIN_GAS_URL) {
-            fetch(ONIX_DOMAIN_GAS_URL, {
-              method: 'POST',
-              mode: 'no-cors',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: payloadStr
-            }).catch(function(err) {});
-          }
-        } catch(e) {}
-
-        // 3. Background beacon for mobile reliability
-        try {
-          if (navigator.sendBeacon) {
-            const blob = new Blob([payloadStr], { type: 'text/plain;charset=utf-8' });
-            navigator.sendBeacon(gasUrl, blob);
-          }
-        } catch(e) {}
-
-        // 4. Fallback GET ping
-        try {
-          const pingUrl = gasUrl + (gasUrl.includes('?') ? '&' : '?') + 'data=' + encodeURIComponent(payloadStr);
-          const img = new Image();
-          img.src = pingUrl;
-        } catch(e) {}
+          }).catch(function(err) {
+            console.warn("fetch sync failed, attempting iframe form fallback:", err);
+            submitViaHiddenForm(gasUrl, payloadStr);
+          });
+        } else {
+          submitViaHiddenForm(gasUrl, payloadStr);
+        }
       } catch(err) {
         console.warn("syncToGoogleSheet notice:", err);
+      }
+    }
+
+    function submitViaHiddenForm(gasUrl, payloadStr) {
+      try {
+        const hiddenForm = document.getElementById('gas-hidden-form');
+        const hiddenPayload = document.getElementById('gas-hidden-payload');
+        if (hiddenForm && hiddenPayload) {
+          hiddenForm.action = gasUrl;
+          hiddenPayload.value = payloadStr;
+          hiddenForm.submit();
+        }
+      } catch(e) {
+        console.warn("hidden form fallback error:", e);
       }
     }
 
@@ -2328,22 +2310,39 @@
           if (res && res.status === 'success' && Array.isArray(res.bookings)) {
             const remoteBookings = res.bookings;
 
-            // Map all remote bookings directly from Google Sheet
-            const freshBookings = remoteBookings.map((rb, idx) => ({
-              id: 'BK-' + (Date.now() - idx * 1000),
-              date: rb.date,
-              dateDisplay: rb.dateDisplay || rb.date,
-              name: rb.name || 'Onix Staff',
-              empId: rb.empId || '',
-              email: (rb.empId && rb.empId.includes('@')) ? rb.empId : (rb.email || ''),
-              mealType: (rb.mealType || 'veg').toLowerCase(),
-              tokenCode: rb.tokenCode || 'A01',
-              status: rb.status || 'Confirmed',
-              isUnplanned: !!rb.isUnplanned || (rb.status && rb.status.includes('Unplanned')),
-              servedAt: rb.servedAt || '',
-              servedDate: (rb.status && (rb.status.includes('Served') || rb.status.includes('SERVED'))) ? (rb.date || '') : '',
-              timestamp: ''
-            }));
+            // Deduplicate remote bookings from Google Sheet (drop duplicate rows for same date & token)
+            const seenKeys = new Set();
+            const uniqueRemote = [];
+            remoteBookings.forEach(rb => {
+              const normDate = parseBookingDateToIso(rb.date) || rb.date;
+              const tokenKey = (rb.tokenCode || '').toUpperCase().trim();
+              const key = normDate + '_' + tokenKey;
+              if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                uniqueRemote.push(rb);
+              }
+            });
+
+            // Map all clean remote bookings directly from Google Sheet
+            const freshBookings = uniqueRemote.map((rb, idx) => {
+              const cleanDate = parseBookingDateToIso(rb.date) || rb.date;
+              const cleanDisplay = formatDateForDisplay(rb.dateDisplay || rb.date);
+              return {
+                id: 'BK-' + (Date.now() - idx * 1000),
+                date: cleanDate,
+                dateDisplay: cleanDisplay,
+                name: rb.name || 'Onix Staff',
+                empId: rb.empId || '',
+                email: (rb.empId && rb.empId.includes('@')) ? rb.empId : (rb.email || ''),
+                mealType: (rb.mealType || 'veg').toLowerCase(),
+                tokenCode: rb.tokenCode || 'A01',
+                status: rb.status || 'Confirmed',
+                isUnplanned: !!rb.isUnplanned || (rb.status && rb.status.includes('Unplanned')),
+                servedAt: rb.servedAt || '',
+                servedDate: (rb.status && (rb.status.includes('Served') || rb.status.includes('SERVED'))) ? cleanDate : '',
+                timestamp: ''
+              };
+            });
 
             // The Google Sheet is the authoritative Single Source of Truth:
             appState.bookings = freshBookings;
@@ -2359,6 +2358,9 @@
               const matched = freshBookings.find(b => b.tokenCode === appState.activeUserPass.tokenCode || b.id === appState.activeUserPass.id);
               appState.activeUserPass = matched || freshBookings[0];
               try { localStorage.setItem('onix_active_pass', JSON.stringify(appState.activeUserPass)); } catch(e) {}
+            } else {
+              appState.activeUserPass = freshBookings[0];
+              try { localStorage.setItem('onix_active_pass', JSON.stringify(freshBookings[0])); } catch(e) {}
             }
 
             calculateSelectedDates();
@@ -2817,6 +2819,25 @@
       return '';
     }
 
+    function formatDateForDisplay(rawDate) {
+      if (!rawDate) return '';
+      const str = String(rawDate).trim();
+      if (/^[A-Za-z]+,\s+[A-Za-z]{3}\s+\d{1,2}$/.test(str)) return str;
+
+      const iso = parseBookingDateToIso(rawDate);
+      if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        const parts = iso.split('-');
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const dateObj = new Date(y, m, d);
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${days[dateObj.getDay()]}, ${months[dateObj.getMonth()]} ${dateObj.getDate()}`;
+      }
+      return str;
+    }
+
     function checkPassDateStatus(passDate) {
       const todayIso = getLocalDateIso(new Date());
       const passIso = parseBookingDateToIso(passDate);
@@ -2976,6 +2997,7 @@
       const badgeText = isVeg ? '🟢 VEG MEAL' : '🔴 NON-VEG MEAL';
       const isServed = pass.status && pass.status.includes('Served');
       const dateStatus = checkPassDateStatus(pass.date);
+      const passCleanDate = formatDateForDisplay(pass.dateDisplay || pass.date);
 
       // Render Multi-Pass Switcher Chips if employee has multiple bookings
       let chipsHtml = '';
@@ -2989,8 +3011,9 @@
           const chipBg = isSelected ? '#30496d' : '#f1f5f9';
           const chipColor = isSelected ? '#ffffff' : '#334155';
           const statusIcon = isSvd ? '✅' : (dStatus === 'today' ? '⚡' : '📅');
+          const cleanChipDate = formatDateForDisplay(b.dateDisplay || b.date);
           chipsHtml += `<button type="button" onclick="selectPassForDisplay('${b.id}')" style="background:${chipBg}; color:${chipColor}; border:1px solid ${isSelected ? '#30496d' : '#cbd5e1'}; padding:5px 10px; border-radius:16px; font-size:0.75rem; font-weight:700; cursor:pointer; white-space:nowrap;">
-            ${statusIcon} ${b.dateDisplay || b.date} [${b.tokenCode}]
+            ${statusIcon} ${cleanChipDate} [${b.tokenCode}]
           </button>`;
         });
         chipsHtml += '</div>';
@@ -3025,7 +3048,7 @@
               </div>
               <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                 <span style="color:#cbd5e1;">Date:</span>
-                <span style="font-weight:700;">${pass.dateDisplay || pass.date}</span>
+                <span style="font-weight:700;">${passCleanDate}</span>
               </div>
               <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                 <span style="color:#cbd5e1;">Meal Preference:</span>
@@ -3099,9 +3122,9 @@
             <div style="display:inline-block; background:#e0f2fe; color:#0369a1; font-size:0.75rem; font-weight:800; padding:4px 14px; border-radius:12px; margin-bottom:8px;">
               ADVANCE LUNCH BOOKING CONFIRMED
             </div>
-            <h4 style="color:#1e293b; font-size:1.05rem; font-weight:800; margin:0 0 6px 0;">Scheduled for: ${pass.dateDisplay || pass.date}</h4>
+            <h4 style="color:#1e293b; font-size:1.05rem; font-weight:800; margin:0 0 6px 0;">Scheduled for: ${passCleanDate}</h4>
             <p style="font-size:0.82rem; color:#64748b; margin:0 0 10px 0; line-height:1.5;">
-              Your lunch reservation is active. Counter PIN &amp; QR verification will <strong>automatically unlock on ${pass.dateDisplay || pass.date}</strong> at lunchtime.
+              Your lunch reservation is active. Counter PIN &amp; QR verification will <strong>automatically unlock on ${passCleanDate}</strong> at lunchtime.
             </p>
             <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:0.75rem; color:#475569; display:inline-block;">
               ⚠️ Today's counter PIN cannot be used for this advance booking date.
@@ -3111,7 +3134,7 @@
         statusBadgeHtml = `
           <div style="text-align:center; margin-top:10px;">
             <span style="display:inline-block; padding:6px 18px; border-radius:20px; font-weight:800; font-size:0.82rem; background:#3b82f6; color:white;">
-              📅 SCHEDULED FOR ${pass.dateDisplay || pass.date}
+              📅 SCHEDULED FOR ${passCleanDate}
             </span>
           </div>
         `;
@@ -3123,16 +3146,16 @@
             <div style="display:inline-block; background:#fee2e2; color:#b91c1c; font-size:0.75rem; font-weight:800; padding:4px 14px; border-radius:12px; margin-bottom:8px;">
               PAST / EXPIRED BOOKING
             </div>
-            <h4 style="color:#991b1b; font-size:1.05rem; font-weight:800; margin:0 0 6px 0;">Date: ${pass.dateDisplay || pass.date}</h4>
+            <h4 style="color:#991b1b; font-size:1.05rem; font-weight:800; margin:0 0 6px 0;">Date: ${passCleanDate}</h4>
             <p style="font-size:0.82rem; color:#b91c1c; margin:0; line-height:1.5;">
-              This meal pass was valid for ${pass.dateDisplay || pass.date} and has expired.
+              This meal pass was valid for ${passCleanDate} and has expired.
             </p>
           </div>
         `;
         statusBadgeHtml = `
           <div style="text-align:center; margin-top:10px;">
             <span style="display:inline-block; padding:6px 18px; border-radius:20px; font-weight:800; font-size:0.82rem; background:#64748b; color:white;">
-              ⏱️ EXPIRED PASS (${pass.dateDisplay || pass.date})
+              ⏱️ EXPIRED PASS (${passCleanDate})
             </span>
           </div>
         `;
@@ -3144,7 +3167,7 @@
           <div class="pass-header">
             <div>
               <p style="font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:#94a3b8;">Onix Cafeteria Pass</p>
-              <h3 style="font-size:1.15rem; font-weight:800; color:white;">${pass.dateDisplay || pass.date}</h3>
+              <h3 style="font-size:1.15rem; font-weight:800; color:white;">${passCleanDate}</h3>
             </div>
             <span class="pass-type-badge ${badgeClass}">${badgeText}</span>
           </div>
@@ -3159,7 +3182,7 @@
           <div style="background:#0f172a; border:2px solid #334155; border-radius:12px; padding:14px; text-align:center; margin:12px 0;">
             <p style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:2px;">Your Lunch Serial Token</p>
             <div style="font-size:3.4rem; font-weight:900; color:#38bdf8; font-family:monospace; letter-spacing:0.06em; line-height:1.1;">${pass.tokenCode}</div>
-            <p style="font-size:0.72rem; color:#cbd5e1; margin-top:4px;">${dateStatus === 'today' ? 'Scan counter QR below or tell vendor "<strong>' + pass.tokenCode + '</strong>"' : 'Keep token ready for ' + (pass.dateDisplay || pass.date)}</p>
+            <p style="font-size:0.72rem; color:#cbd5e1; margin-top:4px;">${dateStatus === 'today' ? 'Scan counter QR below or tell vendor "<strong>' + pass.tokenCode + '</strong>"' : 'Keep token ready for ' + passCleanDate}</p>
           </div>
 
           ${verificationSectionHtml}
@@ -3185,14 +3208,15 @@
 
       // 1. DATE-LOCK VALIDATION: Pass MUST be for today
       const dateStatus = checkPassDateStatus(pass.date);
+      const cleanDateStr = formatDateForDisplay(pass.dateDisplay || pass.date);
       if (dateStatus === 'future') {
         playBeepSound('warn');
-        showToast(`⚠️ Advance Booking: This pass is for ${pass.dateDisplay || pass.date}. You can only collect lunch on ${pass.dateDisplay || pass.date}!`, "⚠️");
+        showToast(`⚠️ Advance Booking: This pass is for ${cleanDateStr}. You can only collect lunch on ${cleanDateStr}!`, "⚠️");
         return;
       }
       if (dateStatus === 'past') {
         playBeepSound('warn');
-        showToast(`⚠️ Expired Pass: This meal pass was for ${pass.dateDisplay || pass.date}.`, "⚠️");
+        showToast(`⚠️ Expired Pass: This meal pass was for ${cleanDateStr}.`, "⚠️");
         return;
       }
 
@@ -3223,9 +3247,10 @@
 
       // STRICT DATE VALIDATION
       const dateStatus = checkPassDateStatus(pass.date);
+      const cleanDateStr = formatDateForDisplay(pass.dateDisplay || pass.date);
       if (dateStatus !== 'today') {
         playBeepSound('warn');
-        showToast(`⚠️ Cannot collect: Pass is scheduled for ${pass.dateDisplay || pass.date}, not today!`, "⚠️");
+        showToast(`⚠️ Cannot collect: Pass is scheduled for ${cleanDateStr}, not today!`, "⚠️");
         return;
       }
 
@@ -3259,7 +3284,7 @@
           empId: pass.empId,
           email: pass.email || '',
           name: pass.name,
-          date: pass.dateDisplay || pass.date,
+          date: cleanDateStr,
           servedAt: timeStr
         });
       } catch(err) {
@@ -3437,13 +3462,14 @@
             feedbackBanner.style.background = '#fef3c7';
             feedbackBanner.style.border = '2px solid #f59e0b';
             feedbackBanner.style.color = '#92400e';
+            const otherDateClean = formatDateForDisplay(otherDateMatch.dateDisplay || otherDateMatch.date);
             if (oStatus === 'future') {
-              feedbackBanner.innerHTML = `⚠️ ADVANCE BOOKING! Token [<strong>${otherDateMatch.tokenCode}</strong>] (${otherDateMatch.name}) is booked for <strong>${otherDateMatch.dateDisplay || otherDateMatch.date}</strong>. Cannot serve today!`;
+              feedbackBanner.innerHTML = `⚠️ ADVANCE BOOKING! Token [<strong>${otherDateMatch.tokenCode}</strong>] (${otherDateMatch.name}) is booked for <strong>${otherDateClean}</strong>. Cannot serve today!`;
             } else {
-              feedbackBanner.innerHTML = `⚠️ EXPIRED BOOKING! Token [<strong>${otherDateMatch.tokenCode}</strong>] was booked for <strong>${otherDateMatch.dateDisplay || otherDateMatch.date}</strong>.`;
+              feedbackBanner.innerHTML = `⚠️ EXPIRED BOOKING! Token [<strong>${otherDateMatch.tokenCode}</strong>] was booked for <strong>${otherDateClean}</strong>.`;
             }
           }
-          showToast(`Booking is for ${otherDateMatch.dateDisplay || otherDateMatch.date}, not today!`, "⚠️");
+          showToast(`Booking is for ${formatDateForDisplay(otherDateMatch.dateDisplay || otherDateMatch.date)}, not today!`, "⚠️");
           if (inputEl) inputEl.value = '';
           return;
         }
@@ -3491,7 +3517,7 @@
             empId: match.empId,
             email: match.email || '',
             name: match.name,
-            date: match.dateDisplay || match.date,
+            date: formatDateForDisplay(match.dateDisplay || match.date),
             servedAt: timeStr
           });
 
@@ -3755,7 +3781,7 @@
             const isServed = b.status && b.status.includes('Served');
             rows += `
               <tr>
-                <td>${b.dateDisplay || b.date}</td>
+                <td>${formatDateForDisplay(b.dateDisplay || b.date)}</td>
                 <td><strong style="color:var(--primary); font-family:monospace; font-size:1.15rem; background:#f1f5f9; padding:4px 10px; border-radius:6px;">${b.tokenCode}</strong></td>
                 <td><span style="color:${b.mealType === 'veg' ? 'var(--veg)' : 'var(--nonveg)'}; font-weight:700;">${b.mealType === 'veg' ? '🥗 PURE VEG' : '🍗 NON-VEG'}</span></td>
                 <td>
@@ -3996,10 +4022,11 @@
         const tokenCode = `A${numStr}`;
 
         const isUnplannedBooking = (activeBookingPeriod === 'unplanned');
+        const cleanDisp = formatDateForDisplay(dateObj.fullDisplay || dateObj.iso);
         const booking = {
           id: 'BK-' + (Date.now() + idx),
           date: dateObj.iso,
-          dateDisplay: dateObj.fullDisplay,
+          dateDisplay: cleanDisp,
           name: name,
           empId: empId,
           email: email,
@@ -4013,6 +4040,8 @@
         };
 
         generatedBookings.push(booking);
+        // Ensure no duplicate pass for the same employee and date exists locally
+        appState.bookings = appState.bookings.filter(b => !(b.date === booking.date && (b.tokenCode === booking.tokenCode || (b.empId && b.empId === booking.empId))));
         appState.bookings.unshift(booking);
 
         try {
@@ -4060,7 +4089,7 @@
         <div style="background:#1e293b; border: 2px solid ${badgeColor}; border-radius:16px; padding:24px; box-shadow: 0 0 30px rgba(0,0,0,0.5); text-align:center;">
           <span style="background:${badgeColor}; color:white; padding:4px 12px; border-radius:12px; font-size:0.75rem; font-weight:800; text-transform:uppercase;">${badgeText}</span>
           <h2 style="font-size:1.3rem; margin-top:14px; font-weight:800; color:white;">${pass.name}</h2>
-          <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:14px;">${pass.empId} &bull; ${pass.dateDisplay || pass.date}</p>
+          <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:14px;">${pass.empId} &bull; ${formatDateForDisplay(pass.dateDisplay || pass.date)}</p>
           
           <!-- Large Token Code -->
           <div style="background:#0f172a; padding:12px; border-radius:12px; border:1px solid #334155; margin-bottom:14px;">
@@ -4740,7 +4769,7 @@ let csvContent = "\uFEFF"; // UTF-8 BOM for Microsoft Excel
             const email = b.email || '';
             html += `
               <tr>
-                <td>${b.dateDisplay || b.date}</td>
+                <td>${formatDateForDisplay(b.dateDisplay || b.date)}</td>
                 <td><strong>${b.name || '—'}</strong>${unplBadge}</td>
                 <td>${b.empId || ''}${email ? ` <span style="color:#64748b; font-size:0.75rem;">(${email})</span>` : ''}</td>
                 <td><span style="color:${color}; font-weight:700;">${(b.mealType || '').toUpperCase()}</span></td>
@@ -4767,7 +4796,7 @@ let csvContent = "\uFEFF"; // UTF-8 BOM for Microsoft Excel
 
       let csv = "Date,Employee Name,Employee ID,Meal Type,Token Code,Status,Notes\n";
       appState.bookings.forEach(b => {
-        csv += `"${b.dateDisplay || b.date}","${b.name}","${b.empId}","${b.mealType}","${b.tokenCode}","${b.status || 'Confirmed'}","${b.notes || ''}"\n`;
+        csv += `"${formatDateForDisplay(b.dateDisplay || b.date)}","${b.name}","${b.empId}","${b.mealType}","${b.tokenCode}","${b.status || 'Confirmed'}","${b.notes || ''}"\n`;
       });
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
