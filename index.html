@@ -1041,7 +1041,7 @@
                   <label for="booking-emp-email" style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
                     Onix Email ID *
                   </label>
-                  <input type="email" id="booking-emp-email" placeholder="e.g. name@onixnet.com" style="width:100%; box-sizing:border-box; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; font-weight:600; background:white;">
+                  <input type="email" id="booking-emp-email" placeholder="e.g. name@onixnet.com or onixnet.us" style="width:100%; box-sizing:border-box; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; font-weight:600; background:white;">
                 </div>
               </div>
             </div>
@@ -3949,7 +3949,7 @@
     function isAllowedOnixEmail(email) {
       if (!email) return false;
       const lower = email.trim().toLowerCase();
-      return lower.endsWith('@onixnet.com') || lower.endsWith('@onix.com');
+      return lower.endsWith('@onixnet.com') || lower.endsWith('@onixnet.us') || lower.endsWith('@onix.com');
     }
 
     function openOnixAuthModal() {}
@@ -4042,9 +4042,9 @@
     function initDeviceProfile() {
       cleanJunkTestData();
       const urlParams = new URLSearchParams(window.location.search);
-      const urlEmail = urlParams.get('email');
-      const urlId = urlParams.get('id') || urlParams.get('empid');
-      const urlName = urlParams.get('name');
+      const urlEmail = urlParams.get('email') || urlParams.get('mail') || urlParams.get('emp_email') || urlParams.get('user_email');
+      const urlId = urlParams.get('id') || urlParams.get('empid') || urlParams.get('emp_id') || urlParams.get('employee_id');
+      const urlName = urlParams.get('name') || urlParams.get('emp_name') || urlParams.get('employee_name');
 
       if (urlEmail && isAllowedOnixEmail(urlEmail)) {
         const cleanEmail = urlEmail.trim().toLowerCase();
@@ -4086,8 +4086,8 @@
         return;
       }
 
-      if (!finalEmail || !finalEmail.includes('@') || finalEmail.length < 5) {
-        showToast("Please enter your Official Onix Email ID", "⚠️");
+      if (!finalEmail || !isAllowedOnixEmail(finalEmail)) {
+        showToast("Please enter your Official Onix Email (@onixnet.com or @onixnet.us)", "⚠️");
         toggleEditProfile(true);
         if (emailInput) emailInput.focus();
         return;
